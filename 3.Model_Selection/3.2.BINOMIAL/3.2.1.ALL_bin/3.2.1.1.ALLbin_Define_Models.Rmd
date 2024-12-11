@@ -1,0 +1,1112 @@
+---
+title: "Statistics"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r all setup the packages, message=FALSE}
+knitr::opts_chunk$set(
+	echo = FALSE,
+	message = FALSE,
+	warning = FALSE
+)
+
+# install.packages("pacman")
+# after installing pacman, basically you don't need to install any other packages
+pacman::p_load(
+ rio,
+ dplyr,
+ readr,
+ tidyr,
+ lme4,
+ MuMIn,
+ data.table,
+ here,
+ stringr,
+ gtsummary,    # summary statistics and tests
+ rstatix,      # summary statistics and statistical tests
+ janitor,      # adding totals and percents to tables
+ tidyverse)
+
+
+rm(list = ls())
+load(here("0.data", "dpsir_clean_x0008_countriesfiltered241207.RData"))
+dpsir <- dpsir %>% left_join(driver_comp_x0008 %>% select(-c("DPSIR")), by= "ISO3")
+options(na.action = "na.omit")
+dpsir$ISO3 <- as.factor(dpsir$ISO3)
+dpsir$sign <- as.factor(dpsir$sign)
+
+```
+
+
+# GLOBMODs
+globmods are named after the rownames from the excel file. "models sheet DPSIR 211123_EP.xlsb"
+
+### 2- globmod.rDPSIRir2
+
+```{r ALL dframe.gc}
+#### make sure na.omit is on - default version
+options(na.action = "na.omit")
+# # # dframe.gc-----------------------
+dframe.gc.con <- dpsir %>%
+  select(ISO3, DPSIR) %>% 
+  pivot_wider(names_from = DPSIR, values_from = DPSIR) %>% 
+  filter(!is.na(USE) | !is.na(RESISTANCE) | !is.na(DRI))
+
+# select those countries from the conditioned dataframe
+dframe.gc <- dpsir[dpsir$ISO3 %in% dframe.gc.con$ISO3, ] %>% 
+  select(c("ISO3", "income","SHORTNAME", "DPSIR","x0008", "change", "sign","infTotal", "sanTotal", "vacTotal", "workTotal", "gini","PopDensity","prod.per.area","meantmpAreaPop","GDPcap_mean", "AwarenessandEducation", "General", "MonitoringandSurveillance", "RESPONSE")) %>%
+  na.omit() %>%   
+  mutate(across(where(is.numeric), scale))
+
+# # globmod.rDPSIRir2-----------------------------------------------------------
+
+globmod.rDPSIRir2 <- glmer(formula= factor(sign) ~ 
+                            RESPONSE*DPSIR + 
+                            General*DPSIR +
+                            MonitoringandSurveillance*DPSIR +
+                            AwarenessandEducation*DPSIR +
+                            sanTotal*DPSIR +
+                            infTotal*DPSIR +
+                            workTotal*DPSIR +
+                            vacTotal*DPSIR +
+                            GDPcap_mean*DPSIR +
+                            PopDensity*DPSIR +
+                            gini*DPSIR +
+                            prod.per.area*DPSIR +
+                            meantmpAreaPop*DPSIR +
+                            x0008*DPSIR + 
+                            (1|ISO3), 
+                            data = dframe.gc,
+                           na.action = "na.fail",
+                           family = binomial(),
+                               control=glmerControl(optimizer="bobyqa"))
+
+globmod.rDPSIRir2_income <- glmer(formula= factor(sign) ~ 
+                                   RESPONSE*income + 
+                                   General*income + 
+                                   MonitoringandSurveillance*income + 
+                                   AwarenessandEducation*income + 
+                                   sanTotal*income + 
+                                   infTotal*income + 
+                                   workTotal*income + 
+                                   vacTotal*income + 
+                                   GDPcap_mean*income + 
+                                   PopDensity*income + 
+                                   gini*income + 
+                                   prod.per.area*income + 
+                                   meantmpAreaPop*income + 
+                                   x0008*income +
+                                    (1|ISO3), 
+                                 data = dframe.gc,
+                                 family=binomial(),
+                               control=glmerControl(optimizer="bobyqa"))
+globmod.rDPSIRir2_income_sum <- summary(globmod.rDPSIRir2_income)
+
+```
+
+### 3- globmod.rDPSIRir2.noDr
+
+```{r ALL globmod.rDPSIRir2.noDr}
+###dframe.gc.noDr
+#exclude the explanatory variables
+dframe.gc.noDr <- dpsir[dpsir$ISO3 %in% dframe.gc.con$ISO3, ] %>%
+  select(c("ISO3", "income","SHORTNAME", "DPSIR","x0008","change", "sign", "gini","PopDensity","prod.per.area","meantmpAreaPop","GDPcap_mean", "AwarenessandEducation", "General", "MonitoringandSurveillance", "RESPONSE")) %>% 
+  na.omit() %>%   
+  mutate(across(where(is.numeric), scale))
+
+
+globmod.rDPSIRir2.noDr <- glmer(formula= factor(sign) ~ 
+                                 RESPONSE*DPSIR + 
+                                 General*DPSIR + 
+                                 MonitoringandSurveillance*DPSIR + 
+                                 AwarenessandEducation*DPSIR + 
+                                 GDPcap_mean*DPSIR +  
+                                 PopDensity*DPSIR + 
+                                 gini*DPSIR + 
+                                 prod.per.area*DPSIR + 
+                                 meantmpAreaPop*DPSIR + 
+                                 x0008*DPSIR +
+                                 (1|ISO3), 
+                               data = dframe.gc.noDr, 
+                               family = binomial(),
+                               control=glmerControl(optimizer="bobyqa"))
+globmod.rDPSIRir2.noDr_sum <- summary(globmod.rDPSIRir2.noDr)
+
+#income
+globmod.rDPSIRir2.noDr_income <- glmer(formula= factor(sign) ~ 
+                                        RESPONSE * income + 
+                                        General * income + 
+                                        MonitoringandSurveillance * income + 
+                                        AwarenessandEducation * income + 
+                                        GDPcap_mean * income + 
+                                        PopDensity * income + 
+                                        gini * income + 
+                                        prod.per.area * income + 
+                                        meantmpAreaPop * income + 
+                                        x0008 * income + 
+                                        (1 | ISO3), 
+                                      data = dframe.gc.noDr, 
+                                      family = binomial(),
+                               control=glmerControl(optimizer="bobyqa"))
+globmod.rDPSIRir2.noDr_income_sum <- summary(globmod.rDPSIRir2.noDr_income)
+```
+
+
+
+### 4- globmod.dframe.gc.aP.noDr
+
+```{r ALL  globmod.dframe.gc.aP.noDr}
+###dframe.gc.aP.noDr 
+dframe.gc.aP.noDr.con <- dpsir %>%
+  select(ISO3, DPSIR) %>% 
+  pivot_wider(names_from = DPSIR, values_from = DPSIR) %>% 
+  filter(!is.na(USE))
+dframe.gc.aP.noDr <- dpsir[dpsir$ISO3 %in% dframe.gc.aP.noDr.con$ISO3, ]  %>% 
+  select(-c("sanTotal","infTotal","vacTotal", "workTotal")) %>% 
+  na.omit() %>%   
+  mutate(across(where(is.numeric), scale))
+
+
+globmod.dframe.gc.aP.noDr <- glmer(formula= factor(sign) ~ 
+    RESPONSE * DPSIR + 
+    General * DPSIR + 
+    MonitoringandSurveillance * DPSIR + 
+    AwarenessandEducation * DPSIR + 
+    GDPcap_mean * DPSIR + 
+    PopDensity * DPSIR + 
+    gini * DPSIR + 
+    prod.per.area * DPSIR + 
+    meantmpAreaPop * DPSIR + 
+    x0008 * DPSIR + 
+    (1 | ISO3), 
+    data = dframe.gc.aP.noDr,family = binomial(),
+                               control=glmerControl(optimizer="bobyqa"))
+globmod.dframe.gc.aP.noDr_sum <- summary(globmod.dframe.gc.aP.noDr) 
+
+globmod.dframe.gc.aP.noDr_income <- glmer(formula= factor(sign) ~ 
+    RESPONSE * income + 
+    General * income + 
+    MonitoringandSurveillance * income + 
+    AwarenessandEducation * income + 
+    GDPcap_mean * income + 
+    PopDensity * income + 
+    gini * income + 
+    prod.per.area * income + 
+    meantmpAreaPop * income + 
+    x0008 * income + 
+    (1 | ISO3), 
+    data = dframe.gc.aP.noDr,
+    family = binomial(),
+                               control=glmerControl(optimizer="bobyqa"))
+
+globmod.dframe.gc.aP.noDr_income_sum <- summary(globmod.dframe.gc.aP.noDr_income) 
+
+```
+
+### *5- globmod.dframe.gc.aS.noDr
+
+```{r ALL globmod.dframe.gc.aS.noDr}
+###dframe.gc.aS.noDr
+dframe.gc.aS.noDr.con <- dpsir %>%
+  select(ISO3, DPSIR) %>% 
+  pivot_wider(names_from = DPSIR, values_from = DPSIR) %>% 
+  filter(!is.na(RESISTANCE)) 
+dframe.gc.aS.noDr <- dpsir[dpsir$ISO3 %in% dframe.gc.aS.noDr.con$ISO3, ] %>% 
+  select(-c("sanTotal","infTotal","vacTotal", "workTotal")) %>% 
+  na.omit() %>%   
+  mutate(across(where(is.numeric), scale))
+
+
+globmod.dframe.gc.aS.noDr1 <- glmer(formula= factor(sign) ~ 
+    RESPONSE * DPSIR + 
+    General * DPSIR + 
+    MonitoringandSurveillance * DPSIR + 
+    AwarenessandEducation * DPSIR + 
+    GDPcap_mean * DPSIR + 
+    PopDensity * DPSIR + 
+    gini * DPSIR + 
+    prod.per.area * DPSIR + 
+    #meantmpAreaPop * DPSIR + 
+    x0008 * DPSIR + 
+    (1 | ISO3), 
+    data = dframe.gc.aS.noDr,
+    family = binomial(),
+                               control=glmerControl(optimizer="bobyqa"))
+globmod.dframe.gc.aS.noDr1_sum <- summary(globmod.dframe.gc.aS.noDr1) 
+
+globmod.dframe.gc.aS.noDr2 <- glmer(formula= factor(sign) ~ 
+    RESPONSE * DPSIR + 
+    General * DPSIR + 
+    MonitoringandSurveillance * DPSIR + 
+    AwarenessandEducation * DPSIR + 
+    GDPcap_mean * DPSIR + 
+    PopDensity * DPSIR + 
+    gini * DPSIR + 
+    #prod.per.area * DPSIR + 
+    meantmpAreaPop * DPSIR + 
+    x0008 * DPSIR + 
+    (1 | ISO3), 
+    data = dframe.gc.aS.noDr,
+    family = binomial(),
+                               control=glmerControl(optimizer="bobyqa"))
+globmod.dframe.gc.aS.noDr2_sum <- summary(globmod.dframe.gc.aS.noDr2) 
+
+globmod.dframe.gc.aS.noDr3 <- glmer(formula= factor(sign) ~ 
+    RESPONSE * DPSIR + 
+    General * DPSIR + 
+    MonitoringandSurveillance * DPSIR + 
+    AwarenessandEducation * DPSIR + 
+    GDPcap_mean * DPSIR + 
+    #PopDensity * DPSIR + 
+    gini * DPSIR + 
+    prod.per.area * DPSIR + 
+    meantmpAreaPop * DPSIR + 
+    x0008 * DPSIR + 
+    (1 | ISO3), 
+    data = dframe.gc.aS.noDr,
+    family = binomial(),
+    control=glmerControl(optimizer="bobyqa"))
+
+globmod.dframe.gc.aS.noDr3_sum <- summary(globmod.dframe.gc.aS.noDr3) 
+# Run this too
+
+globmod.dframe.gc.aS.noDr_income <- glmer(formula= factor(sign) ~
+    RESPONSE * income +
+    General * income +
+    MonitoringandSurveillance * income +
+    AwarenessandEducation * income +
+    GDPcap_mean * income +
+    PopDensity * income +
+    gini * income +
+    prod.per.area * income +
+    meantmpAreaPop * income +
+    x0008 * income +
+    (1 | ISO3),
+    data = dframe.gc.aS.noDr,
+    family = binomial(),
+  control=glmerControl(optimizer="bobyqa"))
+ globmod.dframe.gc.aS.noDr_income_sum <- summary(globmod.dframe.gc.aS.noDr_income) 
+
+```
+
+### 6- globmod.dframe.gc.aI.noDr
+
+```{r ALL dframe.gc.aI.noDr}
+###dframe.gc.aI.noDr
+dframe.gc.aI.noDr.con <- dpsir %>%
+  select(ISO3, DPSIR) %>% 
+  pivot_wider(names_from = DPSIR, values_from = DPSIR) %>% 
+  filter(!is.na(DRI))
+dframe.gc.aI.noDr <- dpsir[dpsir$ISO3 %in% dframe.gc.aI.noDr.con$ISO3, ] %>% 
+  select(-c("sanTotal","infTotal","vacTotal", "workTotal")) %>% 
+  na.omit() %>%   
+  mutate(across(where(is.numeric), scale))
+
+
+globmod.dframe.gc.aI.noDr <- glmer(formula= factor(sign) ~ 
+                                    RESPONSE * DPSIR + 
+                                    General * DPSIR + 
+                                    MonitoringandSurveillance * DPSIR + 
+                                    AwarenessandEducation * DPSIR + 
+                                    GDPcap_mean * DPSIR + 
+                                    PopDensity * DPSIR + 
+                                    gini * DPSIR + 
+                                    prod.per.area * DPSIR + 
+                                    meantmpAreaPop * DPSIR + 
+                                    x0008 * DPSIR + 
+                                    (1 | ISO3), 
+                                  data = dframe.gc.aI.noDr,family = binomial(),
+                               control=glmerControl(optimizer="bobyqa"))
+
+globmod.dframe.gc.aI.noDr_sum <- summary(globmod.dframe.gc.aI.noDr) 
+
+globmod.dframe.gc.aI.noDr_income <- glmer(formula= factor(sign) ~ 
+    RESPONSE * income + 
+    General * income + 
+    MonitoringandSurveillance * income + 
+    AwarenessandEducation * income + 
+    GDPcap_mean * income + 
+    PopDensity * income + 
+    gini * income + 
+    prod.per.area * income + 
+    meantmpAreaPop * income + 
+    x0008 * income + 
+    (1 | ISO3), 
+    data = dframe.gc.aI.noDr,
+    family = binomial(),
+    control=glmerControl(optimizer="bobyqa"))
+
+globmod.dframe.gc.aI.noDr_income_sum <- summary(globmod.dframe.gc.aI.noDr_income)
+
+```
+
+### 7- globmod.dframe.gc.aP
+
+```{r ALL dframe.gc.aP}
+###dframe.gc.aP
+dframe.gc.aP.con <- dpsir %>%
+  select(ISO3, DPSIR) %>% 
+  pivot_wider(names_from = DPSIR, values_from = DPSIR) %>% 
+  filter(!is.na(USE))
+dframe.gc.aP <- dpsir[dpsir$ISO3 %in% dframe.gc.aP.con$ISO3, ] %>% 
+  na.omit() %>%   
+  mutate(across(where(is.numeric), scale))
+
+
+globmod.dframe.gc.aP <- glmer(formula= factor(sign) ~ 
+    RESPONSE * DPSIR + 
+    General * DPSIR + 
+    MonitoringandSurveillance * DPSIR + 
+    AwarenessandEducation * DPSIR + 
+    sanTotal * DPSIR + 
+    infTotal * DPSIR + 
+    workTotal * DPSIR + 
+    vacTotal * DPSIR + 
+    GDPcap_mean * DPSIR + 
+    PopDensity * DPSIR + 
+    gini * DPSIR + 
+    prod.per.area * DPSIR + 
+    meantmpAreaPop * DPSIR + 
+    x0008 * DPSIR + 
+    (1 | ISO3), 
+    data = dframe.gc.aP,family = binomial(),
+                               control=glmerControl(optimizer="bobyqa"))
+globmod.dframe.gc.aP_sum <- summary(globmod.dframe.gc.aP) 
+
+globmod.dframe.gc.aP_income <- glmer(formula= factor(sign) ~ 
+    RESPONSE * income + 
+    General * income + 
+    MonitoringandSurveillance * income + 
+    AwarenessandEducation * income + 
+    sanTotal * income + 
+    infTotal * income + 
+    workTotal * income + 
+    vacTotal * income + 
+    GDPcap_mean * income + 
+    PopDensity * income + 
+    gini * income + 
+    prod.per.area * income + 
+    meantmpAreaPop * income + 
+    x0008 * income + 
+    (1 | ISO3), 
+    data = dframe.gc.aP, family = binomial(),
+                               control=glmerControl(optimizer="bobyqa"))
+globmod.dframe.gc.aP_income_sum <- summary(globmod.dframe.gc.aP_income) 
+
+```
+
+### 8- globmod.dframe.gc.aS
+
+```{r ALL dframe.gc.aS}
+###dframe.gc.aS
+dframe.gc.aS.con <- dpsir %>%
+  select(ISO3, DPSIR) %>% 
+  pivot_wider(names_from = DPSIR, values_from = DPSIR) %>% 
+  filter(!is.na(RESISTANCE))
+dframe.gc.aS <- dpsir[dpsir$ISO3 %in% dframe.gc.aS.con$ISO3, ] %>% 
+  na.omit() %>%   
+  mutate(across(where(is.numeric), scale))
+
+
+globmod.dframe.gc.aS <- glmer(formula= factor(sign) ~  
+                               RESPONSE*DPSIR +
+                               General*DPSIR + 
+                               MonitoringandSurveillance*DPSIR + 
+                               AwarenessandEducation*DPSIR  + 
+                               sanTotal*DPSIR + 
+                               infTotal*DPSIR + 
+                               workTotal*DPSIR  + 
+                               vacTotal*DPSIR  + 
+                               GDPcap_mean*DPSIR +  
+                               PopDensity*DPSIR + 
+                               gini*DPSIR + 
+                               prod.per.area*DPSIR + 
+                               meantmpAreaPop*DPSIR + 
+                               x0008*DPSIR +
+                               (1|ISO3), 
+                              data = dframe.gc.aS,
+                              family = binomial(),
+                               control=glmerControl(optimizer="bobyqa"))
+globmod.dframe.gc.aS_sum <- summary(globmod.dframe.gc.aS) 
+
+globmod.dframe.gc.aS_income <- glmer(formula= factor(sign) ~  
+                               RESPONSE*income +
+                               General*income + 
+                               MonitoringandSurveillance*income + 
+                               AwarenessandEducation*income  + 
+                               sanTotal*income + 
+                               infTotal*income + 
+                               workTotal*income  + 
+                               vacTotal*income  + 
+                               GDPcap_mean*income +  
+                               PopDensity*income + 
+                               gini*income + 
+                               prod.per.area*income + 
+                               meantmpAreaPop*income + 
+                               x0008*income +
+                               (1|ISO3), data = dframe.gc.aS,
+                              family = binomial(),
+                               control=glmerControl(optimizer="bobyqa"))
+globmod.dframe.gc.aS_income_sum <- summary(globmod.dframe.gc.aS_income) 
+
+```
+
+### 9- globmod.dframe.gc.aI
+
+```{r ALL dframe.gc.aI}
+###dframe.gc.aI
+dframe.gc.aI.con <- dpsir %>%
+  select(ISO3, DPSIR) %>% 
+  pivot_wider(names_from = DPSIR, values_from = DPSIR) %>% 
+  filter(!is.na(DRI))
+dframe.gc.aI <- dpsir[dpsir$ISO3 %in% dframe.gc.aI.con$ISO3, ] %>% 
+  na.omit()%>%   
+  mutate(across(where(is.numeric), scale))
+
+
+globmod.dframe.gc.aI <- glmer(formula= factor(sign) ~  
+                               RESPONSE*DPSIR +
+                               General*DPSIR + 
+                               MonitoringandSurveillance*DPSIR + 
+                               AwarenessandEducation*DPSIR  + 
+                               sanTotal*DPSIR + 
+                               infTotal*DPSIR + 
+                               workTotal*DPSIR  + 
+                               vacTotal*DPSIR  + 
+                               GDPcap_mean*DPSIR +  
+                               PopDensity*DPSIR + 
+                               gini*DPSIR + 
+                               prod.per.area*DPSIR + 
+                               meantmpAreaPop*DPSIR + 
+                               x0008*DPSIR +
+                               (1|ISO3), data = dframe.gc.aI,
+                              family = binomial(),
+                               control=glmerControl(optimizer="bobyqa"))
+globmod.dframe.gc.aI_sum <-summary(globmod.dframe.gc.aI)
+
+globmod.dframe.gc.aI_income <- glmer(formula= factor(sign) ~  
+                               RESPONSE*income +
+                               General*income + 
+                               MonitoringandSurveillance*income + 
+                               AwarenessandEducation*income  + 
+                               sanTotal*income + 
+                               infTotal*income + 
+                               workTotal*income  + 
+                               vacTotal*income  + 
+                               GDPcap_mean*income +  
+                               PopDensity*income + 
+                               gini*income + 
+                               prod.per.area*income + 
+                               meantmpAreaPop*income + 
+                               x0008*income +
+                               (1|ISO3), 
+                               data = dframe.gc.aI ,
+                              family = binomial(),
+                               control=glmerControl(optimizer="bobyqa"))
+globmod.dframe.gc.aI_income_sum <-summary(globmod.dframe.gc.aI_income) 
+
+```
+
+### 10- globmod.dframe.iD
+
+```{r ALL dframe.iD}
+# dframe.iD
+ driver_lvl2 <- dpsir_final %>% 
+  filter(level== "level 2" & DPSIR == "DRIVERS") %>% select(c("ISO3", "income", "SHORTNAME", "DPSIR", "change", "sign", "x0008" )) %>% 
+  unique() %>% 
+  left_join(eco_vars, by = c("ISO3"))
+
+driver_lvl2_df_mod <- driver_lvl2 %>% left_join(survey_vars, by="ISO3") 
+
+dframe.iD.con <- dpsir_final %>%
+  select(ISO3, DPSIR) %>% unique() %>% 
+  pivot_wider(names_from = DPSIR, values_from = DPSIR) %>% 
+  filter(!is.na(USE) | !is.na(RESISTANCE) | !is.na(DRI))
+# select those countries from the conditioned dataframe
+dframe.iD <- driver_lvl2_df_mod[driver_lvl2_df_mod$ISO3 %in% dframe.iD.con$ISO3, ] %>% na.omit()%>%   
+  mutate(across(where(is.numeric), scale))
+
+dframe.iD$ISO3 <- as.factor(dframe.iD$ISO3)
+dframe.iD$DPSIR <- as.factor(dframe.iD$DPSIR)
+dframe.iD$sign <- as.factor(dframe.iD$sign)
+
+### THIS MODEL IS EXCLUDED BECAUSE THE DF HAS ONLY ! TYPE OF DPSIR CATEGORY HENCE CANT BE INCLUDED AS AN INTERACTION EFFECT
+### globmod.dframe.iD
+# globmod.dframe.iD <- glmer(formula= factor(sign) ~  
+#                             RESPONSE*DPSIR + 
+#                             General*DPSIR + 
+#                             MonitoringandSurveillance*DPSIR + 
+#                             AwarenessandEducation*DPSIR + 
+#                             GDPcap_mean*DPSIR +  
+#                             PopDensity*DPSIR + 
+#                             gini*DPSIR + 
+#                             prod.per.area*DPSIR + 
+#                             meantmpAreaPop*DPSIR + 
+#                             x0008*DPSIR +
+#                             (1|ISO3) + 
+#                             (1|SHORTNAME), 
+#                             data = dframe.iD)
+# 
+# globmod.dframe.iD_sum <- summary(globmod.dframe.iD) 
+
+### NOTE SHORTNAME ISNT A RANDOM EFFECT
+globmod.dframe.iD_income <- glmer(formula= factor(sign) ~  
+                            RESPONSE*income + 
+                            General*income + 
+                            MonitoringandSurveillance*income + 
+                            AwarenessandEducation*income + 
+                            GDPcap_mean*income +  
+                            PopDensity*income + 
+                            gini*income + 
+                            prod.per.area*income + 
+                            meantmpAreaPop*income + 
+                            x0008*income +
+                            (1|ISO3), 
+                            data = dframe.iD,
+                            family = binomial(),
+                            control=glmerControl(optimizer="bobyqa"))
+
+globmod.dframe.iD_income_sum <- summary(globmod.dframe.iD_income) 
+
+```
+
+### 11- globmod.dframe.iP
+
+```{r ALL  globmod.dframe.iP}
+# dframe.iP
+ use_lvl2 <- dpsir_final %>% 
+  filter(level== "level 2" & DPSIR == "USE") %>% select(c("ISO3", "income", "change", "sign", "x0008","SHORTNAME", "DPSIR")) %>% 
+  unique()
+use_lvl2_eco_vars <- use_lvl2 %>% left_join(eco_vars, by = c("ISO3")) %>% select(-c("DPSIR"))
+
+use_lvl2_df_mod <- use_lvl2_eco_vars %>% left_join(survey_vars, by ="ISO3") %>% left_join(driver_comp_x0008 %>% select(-c("DPSIR")), by="ISO3")
+use_lvl2_df_mod$ISO3 <- as.factor(use_lvl2_df_mod$ISO3)
+##dframe.iP and use_lvl2_df_mod are identical
+dframe.iP <- use_lvl2_df_mod %>% 
+  na.omit() %>%   
+  mutate(across(where(is.numeric), scale))
+
+dframe.iP$sign <- as.factor(dframe.iP$sign)
+# globmod.dframe.iP <-  glmer(formula= factor(sign) ~  
+#                             RESPONSE*DPSIR + 
+#                             General*DPSIR + 
+#                             MonitoringandSurveillance*DPSIR + 
+#                             AwarenessandEducation*DPSIR + 
+#                             GDPcap_mean*DPSIR +  
+#                             PopDensity*DPSIR + 
+#                             gini*DPSIR + 
+#                             prod.per.area*DPSIR + 
+#                             meantmpAreaPop*DPSIR + 
+#                             x0008*DPSIR +
+#                             (1|ISO3) + (1|SHORTNAME),
+#                            data = dframe.iP)
+# 
+# globmod.dframe.iP_sum <- summary(globmod.dframe.iP) 
+
+globmod.dframe.iP_income <- glmer(formula= factor(sign) ~  
+                            RESPONSE*income + 
+                            General*income + 
+                            MonitoringandSurveillance*income + 
+                            AwarenessandEducation*income + 
+                              infTotal*income +
+sanTotal*income +
+vacTotal*income +
+workTotal*income +
+                            GDPcap_mean*income +  
+                            PopDensity*income + 
+                            gini*income + 
+                            prod.per.area*income + 
+                            meantmpAreaPop*income + 
+                            x0008*income +
+                            (1|ISO3) + (1|SHORTNAME), 
+                            data = dframe.iP,
+                              family = binomial(),
+                               control=glmerControl(optimizer="bobyqa"))
+
+globmod.dframe.iP_income_sum <- summary(globmod.dframe.iP_income) 
+
+```
+
+### 12- globmod.dframe.iS
+
+```{r ALL globmod.dframe.iS}
+# dframe.iS
+ resistance_lvl2 <- dpsir_final %>% 
+  filter(level== "level 2" & DPSIR == "RESISTANCE") %>% select(c("ISO3", "income","change", "sign", "SHORTNAME", "DPSIR" , "x0008")) %>% 
+  unique() 
+resistance_lvl2_df <- resistance_lvl2 %>% left_join(eco_vars, by = c("ISO3")) %>% select(-c("DPSIR"))
+
+resistance_lvl2_df_mod <- resistance_lvl2_df %>%left_join(survey_vars, by ="ISO3") %>% left_join(driver_comp_x0008 %>% select(-c("DPSIR")), by="ISO3")
+
+resistance_lvl2_df_mod$ISO3 <- as.factor(resistance_lvl2_df_mod$ISO3)
+resistance_lvl2_df_mod$SHORTNAME <- as.factor(resistance_lvl2_df_mod$SHORTNAME)
+
+##dframe.iS and resistance_lvl2_df_mod are identical
+dframe.iS <- resistance_lvl2_df_mod %>% 
+  na.omit() %>%   
+  mutate(across(where(is.numeric), scale))
+
+dframe.iS$sign <- as.factor(dframe.iS$sign)
+# globmod.dframe.iS <- glmer(formula= factor(sign) ~
+#                             RESPONSE*DPSIR +
+#                             General*DPSIR +
+#                             MonitoringandSurveillance*DPSIR +
+#                             AwarenessandEducation*DPSIR +
+#                             GDPcap_mean*DPSIR +
+#                             PopDensity*DPSIR +
+#                             gini*DPSIR +
+#                             prod.per.area*DPSIR +
+#                             meantmpAreaPop*DPSIR +
+#                             x0008*DPSIR +
+#                             (1|ISO3) + (1|SHORTNAME),
+#                           data = dframe.iS)
+# 
+# globmod.dframe.iS_sum <- summary(globmod.dframe.iS) 
+
+globmod.dframe.iS_income <- glmer(formula= factor(sign) ~  
+                            RESPONSE*income + 
+                            General*income + 
+                            MonitoringandSurveillance*income + 
+                            AwarenessandEducation*income +
+                              infTotal*income +
+sanTotal*income +
+vacTotal*income +
+workTotal*income +
+                            GDPcap_mean*income +  
+                            PopDensity*income + 
+                            gini*income + 
+                            prod.per.area*income + 
+                            meantmpAreaPop*income + 
+                            x0008*income +
+                            (1|ISO3) + (1|SHORTNAME), data = dframe.iS,
+                              family = binomial(),
+                               control=glmerControl(optimizer="bobyqa"))
+globmod.dframe.iS_income_sum <- summary(globmod.dframe.iS_income) 
+
+
+```
+
+### 13- globmod.dframe.gcI - will be excluded from the results
+
+```{r}
+#these models in binomial will be excluded because  do few countries reducing impact and a lot in 1 category int increases and others decrease, so ithe multivariate model doesn't converge. 
+# dframe.gcI
+ DRI <- dpsir_final %>% 
+  filter(DPSIR == "DRI") %>% 
+  select(c("ISO3", "income", "SHORTNAME", "DPSIR", "x0008", "change", "sign")) %>% 
+  unique()
+
+DRI_df <- DRI %>% 
+  left_join(eco_vars, by = c("ISO3"))
+#%>%   select(-c("DPSIR"))
+
+DRI_df_mod <- DRI_df %>% 
+  left_join(survey_vars, by ="ISO3") %>% 
+  left_join(driver_comp_x0008 %>% 
+              select(-c("DPSIR")), by="ISO3")
+
+DRI_df_mod$ISO3 <- as.factor(DRI_df_mod$ISO3)
+
+##dframe.gcI and DRI_df_mod are identical
+dframe.gcI <- DRI_df_mod %>% na.omit()  %>%   mutate(across(where(is.numeric), scale)) 
+# %>% select(-c("SHORTNAME"))
+
+# globmod.dframe.gcI <- glmer(formula= factor(sign) ~
+#                              RESPONSE*DPSIR +
+#                              General*DPSIR +
+#                              MonitoringandSurveillance*DPSIR +
+#                              AwarenessandEducation*DPSIR +
+#                              infTotal*DPSIR +
+#                              sanTotal*DPSIR +
+#                              vacTotal*DPSIR +
+#                              workTotal*DPSIR +
+#                              GDPcap_mean*DPSIR +
+#                              PopDensity*DPSIR +
+#                              gini*DPSIR +
+#                              prod.per.area*DPSIR +
+#                              meantmpAreaPop*DPSIR +
+#                              x0008*DPSIR,
+#                               (1|ISO3),
+#                             # (1|SHORTNAME),
+#                               data = dframe.gcI,
+#                               family = binomial(),
+#                                control=glmerControl(optimizer="bobyqa",
+#                                                     boundary.tol=1e-2 ,
+#                                                     tolPwrss=1e-2))
+# globmod.dframe.gcI_sum <- summary(globmod.dframe.gcI)
+
+globmod.dframe.gcI_income <- glmer(formula=factor(sign) ~
+                             RESPONSE*income +
+General*income +
+MonitoringandSurveillance*income +
+AwarenessandEducation*income +
+infTotal*income +
+sanTotal*income +
+vacTotal*income +
+workTotal*income +
+GDPcap_mean*income +
+PopDensity*income +
+gini*income +
+prod.per.area*income +
+meantmpAreaPop*income +
+x0008*income +
+  (1|ISO3),
+data=dframe.gcI,
+family = binomial(),
+control=glmerControl(optimizer="bobyqa"))
+
+#globmod.dframe.gcI_income_sum <- summary(globmod.dframe.gcI_income)
+
+```
+
+### 14- globmod.dframe.gcDPS
+
+```{r}
+###dframe.gcDPS
+dframe.gcDPS.con <- dpsir %>%
+  select(ISO3, DPSIR) %>% 
+  pivot_wider(names_from = DPSIR, values_from = DPSIR) %>% 
+  filter(!is.na(USE) | !is.na(RESISTANCE))
+# select those countries from the conditioned dataframe
+dframe.gcDPS <- dpsir[dpsir$ISO3 %in% dframe.gcDPS.con$ISO3, ] %>%  
+  filter(! DPSIR == "DRI") %>% na.omit() %>%   
+  mutate(across(where(is.numeric), scale))
+
+
+globmod.dframe.gcDPS <- glmer(formula= factor(sign) ~  
+                               RESPONSE*DPSIR + 
+                               General*DPSIR + 
+                               MonitoringandSurveillance*DPSIR + 
+                               AwarenessandEducation*DPSIR + 
+                               sanTotal*DPSIR + 
+                               infTotal*DPSIR + 
+                               workTotal*DPSIR + 
+                               vacTotal*DPSIR + 
+                               GDPcap_mean*DPSIR +
+                               PopDensity*DPSIR + 
+                               gini*DPSIR + 
+                               prod.per.area*DPSIR + 
+                               meantmpAreaPop*DPSIR + 
+                               x0008*DPSIR +
+                               (1|ISO3), data = dframe.gcDPS,
+                              family = binomial(),
+                               control=glmerControl(optimizer="bobyqa"))
+globmod.dframe.gcDPS_sum <- summary(globmod.dframe.gcDPS) 
+
+globmod.dframe.gcDPS_income <- glmer(formula= factor(sign) ~  
+                               RESPONSE*income + 
+                               General*income + 
+                               MonitoringandSurveillance*income + 
+                               AwarenessandEducation*income + 
+                               sanTotal*income + 
+                               infTotal*income + 
+                               workTotal*income + 
+                               vacTotal*income + 
+                               GDPcap_mean*income +
+                               PopDensity*income + 
+                               gini*income + 
+                               prod.per.area*income + 
+                               meantmpAreaPop*income + 
+                               x0008*income + 
+                               (1|ISO3), 
+                               data = dframe.gcDPS,
+                              family = binomial(),
+                               control=glmerControl(optimizer="bobyqa"))
+globmod.dframe.gcDPS_income_sum <- summary(globmod.dframe.gcDPS_income) 
+
+```
+
+### 15- globmod.dframe.gcPSI
+
+```{r}
+###dframe.gcPSI
+dframe.gcPSI.con <- dpsir %>%
+  select(ISO3, DPSIR) %>% 
+  pivot_wider(names_from = DPSIR, values_from = DPSIR) %>% 
+  filter(!is.na(USE) | !is.na(RESISTANCE) | !is.na(DRI))
+# select those countries from the conditioned dataframe
+dframe.gcPSI <- dpsir[dpsir$ISO3 %in% dframe.gcPSI.con$ISO3, ] %>%  filter(! DPSIR == "DRIVERS") %>% na.omit() %>%   
+  mutate(across(where(is.numeric), scale))
+
+options(na.action = "na.omit")
+
+globmod.dframe.gcPSI <- glmer(formula= factor(sign) ~  
+                               RESPONSE*DPSIR + 
+                               General*DPSIR + 
+                               MonitoringandSurveillance*DPSIR + 
+                               AwarenessandEducation*DPSIR + 
+                               sanTotal*DPSIR + 
+                               infTotal*DPSIR + 
+                               workTotal*DPSIR + 
+                               vacTotal*DPSIR + 
+                               GDPcap_mean*DPSIR +
+                               PopDensity*DPSIR + 
+                               gini*DPSIR + 
+                               prod.per.area*DPSIR + 
+                               meantmpAreaPop*DPSIR + 
+                               x0008*DPSIR +
+                               (1|ISO3),
+                               data = dframe.gcPSI,
+                              family = binomial(),
+                               control=glmerControl(optimizer="bobyqa"))
+globmod.dframe.gcPSI_sum <- summary(globmod.dframe.gcPSI) 
+
+globmod.dframe.gcPSI_income <- glmer(formula= factor(sign) ~  
+                               RESPONSE*income + 
+                               General*income + 
+                               MonitoringandSurveillance*income + 
+                               AwarenessandEducation*income + 
+                               sanTotal*income + 
+                               infTotal*income + 
+                               workTotal*income + 
+                               vacTotal*income + 
+                               GDPcap_mean*income +
+                               PopDensity*income + 
+                               gini*income + 
+                               prod.per.area*income + 
+                               meantmpAreaPop*income + 
+                               x0008*income +
+                               (1|ISO3),
+                               data = dframe.gcPSI,
+                              family = binomial(),
+                               control=glmerControl(optimizer="bobyqa"))
+globmod.dframe.gcPSI_income_sum <- summary(globmod.dframe.gcPSI_income) 
+
+```
+
+### 16- globmod.dframe.gcDP
+
+```{r}
+###dframe.gcDP
+dframe.gcDP.con <-  dpsir %>%
+  select(ISO3, DPSIR) %>% 
+  pivot_wider(names_from = DPSIR, values_from = DPSIR) %>% 
+  filter(!is.na(USE))
+# select those countries from the conditioned dataframe
+dframe.gcDP <- dpsir[dpsir$ISO3 %in% dframe.gcDP.con$ISO3, ] %>%  
+  filter(DPSIR == "DRIVERS" | DPSIR == "USE") %>% 
+  drop_na() %>%   
+  mutate(across(where(is.numeric), scale))
+
+
+globmod.dframe.gcDP <- glmer(formula= factor(sign) ~  
+                               RESPONSE*DPSIR + 
+                               General*DPSIR + 
+                               MonitoringandSurveillance*DPSIR + 
+                               AwarenessandEducation*DPSIR + 
+                               sanTotal*DPSIR + 
+                               infTotal*DPSIR + 
+                               workTotal*DPSIR + 
+                               vacTotal*DPSIR + 
+                               GDPcap_mean*DPSIR +
+                               PopDensity*DPSIR + 
+                               gini*DPSIR + 
+                               prod.per.area*DPSIR + 
+                               meantmpAreaPop*DPSIR + 
+                               x0008*DPSIR +
+                               (1|ISO3), 
+                              data = dframe.gcDP,
+                              family = binomial(),
+                               control=glmerControl(optimizer="bobyqa"))
+globmod.dframe.gcDP_sum <- summary(globmod.dframe.gcDP) 
+
+globmod.dframe.gcDP_income <- glmer(formula= factor(sign) ~  
+                               RESPONSE*income + 
+                               General*income + 
+                               MonitoringandSurveillance*income + 
+                               AwarenessandEducation*income + 
+                               sanTotal*income + 
+                               infTotal*income + 
+                               workTotal*income + 
+                               vacTotal*income + 
+                               GDPcap_mean*income +
+                               PopDensity*income + 
+                               gini*income + 
+                               prod.per.area*income + 
+                               meantmpAreaPop*income + 
+                               x0008*income+
+                               (1|ISO3), 
+                              data = dframe.gcDP,
+                              family = binomial(),
+                               control=glmerControl(optimizer="bobyqa"))
+globmod.dframe.gcDP_income_sum <- summary(globmod.dframe.gcDP_income) 
+# options(na.action = "na.fail")
+
+```
+
+### *17- globmod.dframe.gcPS
+
+```{r}
+###dframe.gcPS
+dframe.gcPS.con <-  dpsir %>%
+  select(ISO3, DPSIR) %>% 
+  pivot_wider(names_from = DPSIR, values_from = DPSIR) %>% 
+  filter(!is.na(USE)| !is.na(RESISTANCE))
+# select those countries from the conditioned dataframe
+dframe.gcPS <- dpsir[dpsir$ISO3 %in% dframe.gcPS.con$ISO3, ] %>%  
+  filter(DPSIR == "USE" | DPSIR == "RESISTANCE") %>% 
+  drop_na() %>%   
+  mutate(across(where(is.numeric), scale))
+
+
+globmod.dframe.gcPS <- glmer(formula= factor(sign) ~  
+                               RESPONSE*DPSIR + 
+                               General*DPSIR + 
+                               MonitoringandSurveillance*DPSIR + 
+                               AwarenessandEducation*DPSIR + 
+                               sanTotal*DPSIR + 
+                               infTotal*DPSIR + 
+                               workTotal*DPSIR + 
+                               vacTotal*DPSIR + 
+                               GDPcap_mean*DPSIR +
+                               PopDensity*DPSIR + 
+                               gini*DPSIR + 
+                               prod.per.area*DPSIR + 
+                               meantmpAreaPop*DPSIR + 
+                               x0008*DPSIR +
+                               (1|ISO3),
+                               data = dframe.gcPS,
+                              family = binomial(),
+                               control=glmerControl(optimizer="bobyqa"))
+
+globmod.dframe.gcPS_sum <- summary(globmod.dframe.gcPS) 
+#### NOTE 3 models are running instead of 1 
+globmod.dframe.gcPS_income1 <- glmer(formula= factor(sign) ~  
+                               RESPONSE*income + 
+                               General*income + 
+                               MonitoringandSurveillance*income + 
+                               AwarenessandEducation*income + 
+                               sanTotal*income + 
+                               infTotal*income + 
+                               workTotal*income + 
+                               vacTotal*income + 
+                               #GDPcap_mean*income +
+                               PopDensity*income + 
+                               gini*income + 
+                               prod.per.area*income + 
+                               meantmpAreaPop*income + 
+                               x0008*income +
+                               (1|ISO3),
+                               data = dframe.gcPS,
+                              family = binomial(),
+                               control=glmerControl(optimizer="bobyqa"))
+globmod.dframe.gcPS_income1_sum <- summary(globmod.dframe.gcPS_income1) 
+
+globmod.dframe.gcPS_income2 <- glmer(formula= factor(sign) ~  
+                            #   RESPONSE*income + 
+                               General*income + 
+                               MonitoringandSurveillance*income + 
+                               AwarenessandEducation*income + 
+                               sanTotal*income + 
+                               infTotal*income + 
+                               workTotal*income + 
+                               vacTotal*income + 
+                              GDPcap_mean*income +
+                               PopDensity*income + 
+                               gini*income + 
+                               prod.per.area*income + 
+                               meantmpAreaPop*income + 
+                               x0008*income +
+                               (1|ISO3),
+                               data = dframe.gcPS,
+                              family = binomial(),
+                               control=glmerControl(optimizer="bobyqa"))
+globmod.dframe.gcPS_income2_sum <- summary(globmod.dframe.gcPS_income2) 
+
+globmod.dframe.gcPS_income3 <- glmer(formula= factor(sign) ~  
+                               RESPONSE*income + 
+                            #   General*income + 
+                               MonitoringandSurveillance*income + 
+                               AwarenessandEducation*income + 
+                               sanTotal*income + 
+                               infTotal*income + 
+                               workTotal*income + 
+                              vacTotal*income + 
+                               GDPcap_mean*income +
+                               PopDensity*income + 
+                               gini*income + 
+                               prod.per.area*income + 
+                               meantmpAreaPop*income + 
+                               x0008*income +
+                               (1|ISO3),
+                               data = dframe.gcPS,
+                              family = binomial(),
+                               control=glmerControl(optimizer="bobyqa"))
+globmod.dframe.gcPS_income3_sum <- summary(globmod.dframe.gcPS_income3) 
+
+# options(na.action = "na.fail")
+
+```
+
+### 18- globmod.dframe.gcSI
+
+```{r}
+###dframe.gcSI
+dframe.gcSI.con <- dpsir %>%
+  select(ISO3, DPSIR) %>% 
+  pivot_wider(names_from = DPSIR, values_from = DPSIR) %>% 
+  filter(!is.na(RESISTANCE) | !is.na(DRI))
+# select those countries from the conditioned dataframe
+dframe.gcSI <- dpsir[dpsir$ISO3 %in% dframe.gcSI.con$ISO3, ] %>%  filter(DPSIR == "RESISTANCE" | DPSIR == "DRI") %>% drop_na() %>%   
+  mutate(across(where(is.numeric), scale))
+
+
+globmod.dframe.gcSI <- glmer(formula= factor(sign) ~  
+                               RESPONSE*DPSIR + 
+                               General*DPSIR + 
+                               MonitoringandSurveillance*DPSIR + 
+                               AwarenessandEducation*DPSIR + 
+                               sanTotal*DPSIR + 
+                               infTotal*DPSIR + 
+                               workTotal*DPSIR + 
+                               vacTotal*DPSIR + 
+                               GDPcap_mean*DPSIR +
+                               PopDensity*DPSIR + 
+                               gini*DPSIR + 
+                               prod.per.area*DPSIR + 
+                               meantmpAreaPop*DPSIR + 
+                               x0008*DPSIR +
+                               (1|ISO3), 
+                             data = dframe.gcSI,
+                              family = binomial(),
+                               control=glmerControl(optimizer="bobyqa"))
+
+globmod.dframe.gcSI_sum <- summary(globmod.dframe.gcSI) 
+globmod.dframe.gcSI_income <- glmer(formula= factor(sign) ~  
+                               RESPONSE*income + 
+                               General*income + 
+                               MonitoringandSurveillance*income + 
+                               AwarenessandEducation*income + 
+                               sanTotal*income + 
+                               infTotal*income + 
+                               workTotal*income + 
+                               vacTotal*income + 
+                               GDPcap_mean*income +
+                               PopDensity*income + 
+                               gini*income + 
+                               prod.per.area*income + 
+                               meantmpAreaPop*income + 
+                               x0008*income +
+                               (1|ISO3),
+                               data = dframe.gcSI,
+                              family = binomial(),
+                               control=glmerControl(optimizer="bobyqa"))
+
+globmod.dframe.gcSI_income_sum <- summary(globmod.dframe.gcSI_income) 
+
+```
+
+#### LIST 
+
+```{r}
+
+# First clear all the unneccessary data. 
+## Clear the condition dataframes
+rm(list = ls()[grepl("\\.con$", ls())])
+rm(list = ls()[grepl("\\_lvl2", ls())])
+
+save.image(file = here("3.Model_Selection/3.2.BINOMIAL/3.2.1.ALL_bin", "ALL_bin_Define_Models_input.RData"))
+
+```

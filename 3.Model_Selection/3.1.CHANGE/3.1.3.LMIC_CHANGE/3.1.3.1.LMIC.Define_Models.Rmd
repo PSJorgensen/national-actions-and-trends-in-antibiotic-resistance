@@ -1,0 +1,647 @@
+---
+title: "Statistics"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r all setup the packages, message=FALSE}
+knitr::opts_chunk$set(
+	echo = FALSE,
+	message = FALSE,
+	warning = FALSE)
+
+# install.packages("pacman")
+# after installing pacman, basically you don't need to install any other packages
+pacman::p_load(
+ rio,
+ dplyr,
+ readr,
+ tidyr,
+ lme4,
+ MuMIn,
+ data.table,
+ here,
+ stringr,
+ gtsummary,    # summary statistics and tests
+ rstatix,      # summary statistics and statistical tests
+ janitor,      # adding totals and percents to tables
+ reshape2,
+ tidyverse)     # data management + ggplot2 graphics   
+
+
+rm(list = ls())
+load(here("0.data", "dpsir_clean_x0008_countriesfiltered241207.RData"))
+dpsir <- dpsir %>% left_join(driver_comp_x0008 %>% select(-c("DPSIR")), by= "ISO3")
+# make sure na.omit is on - default version
+options(na.action = "na.omit")
+dpsir_final <- dpsir_final %>% filter(income== "LMIC")
+dpsir <- dpsir %>% filter(income== "LMIC")
+```
+
+
+# GLOBMODs
+globmods are named after the rownames from the excel file. "models sheet DPSIR 211123_EP.xlsb"
+
+### 2- globmod.rDPSIRir2
+
+```{r LMIC dframe.gc}
+# # # dframe.gc-----------------------
+dframe.gc.con <- dpsir %>%
+  select(ISO3, DPSIR) %>% 
+  pivot_wider(names_from = DPSIR, values_from = DPSIR) %>% 
+  filter(!is.na(USE) | !is.na(RESISTANCE) | !is.na(DRI))
+
+# select those countries from the conditioned dataframe
+dframe.gc <- dpsir[dpsir$ISO3 %in% dframe.gc.con$ISO3, ] %>% 
+  select(c("ISO3", "income","SHORTNAME", "DPSIR","x0008","change", "infTotal", "sanTotal", "vacTotal", "workTotal", "gini","PopDensity","prod.per.area","meantmpAreaPop","GDPcap_mean", "AwarenessandEducation", "General", "MonitoringandSurveillance", "RESPONSE")) %>%
+  na.omit()
+
+# if I don't include drop_na sample size is 250 and model has 156 observations. When I include drop_na(sample size is 156. Model results are same in both case.
+# # globmod.rDPSIRir2-----------------------------------------------------------
+globmod.rDPSIRir2 <- lmer(formula= change ~ 
+                            RESPONSE*DPSIR + 
+                            General*DPSIR + 
+                            MonitoringandSurveillance*DPSIR + 
+                            AwarenessandEducation*DPSIR + 
+                            sanTotal*DPSIR + 
+                            infTotal*DPSIR + 
+                            workTotal*DPSIR + 
+                            vacTotal*DPSIR + 
+                            GDPcap_mean*DPSIR + 
+                            PopDensity*DPSIR + 
+                            gini*DPSIR + 
+                            prod.per.area*DPSIR + 
+                            meantmpAreaPop*DPSIR + 
+                            x0008*DPSIR + 
+                            (1|ISO3), 
+                          data = dframe.gc) 
+globmod.rDPSIRir2_sum <- summary(globmod.rDPSIRir2)
+```
+
+### 3- globmod.rDPSIRir2.noDr
+
+```{r LMIC globmod.rDPSIRir2.noDr}
+###dframe.gc.noDr
+#exclude the explanatory variables
+dframe.gc.noDr <- dpsir[dpsir$ISO3 %in% dframe.gc.con$ISO3, ] %>%
+  select(c("ISO3", "income","SHORTNAME", "DPSIR","x0008","change", "gini","PopDensity","prod.per.area","meantmpAreaPop","GDPcap_mean", "AwarenessandEducation", "General", "MonitoringandSurveillance", "RESPONSE")) %>% 
+  na.omit()
+
+
+globmod.rDPSIRir2.noDr <- lmer(formula= change ~ 
+                                 RESPONSE*DPSIR + 
+                                 General*DPSIR + 
+                                 MonitoringandSurveillance*DPSIR + 
+                                 AwarenessandEducation*DPSIR + 
+                                 GDPcap_mean*DPSIR +  
+                                 PopDensity*DPSIR + 
+                                 gini*DPSIR + 
+                                 prod.per.area*DPSIR + 
+                                 meantmpAreaPop*DPSIR + 
+                                 x0008*DPSIR +
+                                 (1|ISO3), 
+                               data = dframe.gc.noDr) 
+globmod.rDPSIRir2.noDr_sum <- summary(globmod.rDPSIRir2.noDr)
+
+```
+
+
+
+### 4- globmod.dframe.gc.aP.noDr
+
+```{r LMIC  globmod.dframe.gc.aP.noDr}
+###dframe.gc.aP.noDr 
+dframe.gc.aP.noDr.con <- dpsir %>%
+  select(ISO3, DPSIR) %>% 
+  pivot_wider(names_from = DPSIR, values_from = DPSIR) %>% 
+  filter(!is.na(USE))
+dframe.gc.aP.noDr <- dpsir[dpsir$ISO3 %in% dframe.gc.aP.noDr.con$ISO3, ]  %>% select(-c("sanTotal","infTotal","vacTotal", "workTotal")) %>% na.omit()
+
+globmod.dframe.gc.aP.noDr <- lmer(formula = change ~ 
+    RESPONSE * DPSIR + 
+    General * DPSIR + 
+    MonitoringandSurveillance * DPSIR + 
+    AwarenessandEducation * DPSIR + 
+    GDPcap_mean * DPSIR + 
+    PopDensity * DPSIR + 
+    gini * DPSIR + 
+    prod.per.area * DPSIR + 
+    meantmpAreaPop * DPSIR + 
+    x0008 * DPSIR + 
+    (1 | ISO3), 
+    data = dframe.gc.aP.noDr)
+globmod.dframe.gc.aP.noDr_sum <- summary(globmod.dframe.gc.aP.noDr) 
+```
+
+### 5- globmod.dframe.gc.aS.noDr
+
+```{r LMIC globmod.dframe.gc.aS.noDr}
+###dframe.gc.aS.noDr
+dframe.gc.aS.noDr.con <- dpsir %>%
+  select(ISO3, DPSIR) %>% 
+  pivot_wider(names_from = DPSIR, values_from = DPSIR) %>% 
+  filter(!is.na(RESISTANCE))
+dframe.gc.aS.noDr <- dpsir[dpsir$ISO3 %in% dframe.gc.aS.noDr.con$ISO3, ] %>% select(-c("sanTotal","infTotal","vacTotal", "workTotal")) %>% na.omit()
+
+globmod.dframe.gc.aS.noDr <- lmer(formula = change ~ 
+    RESPONSE * DPSIR + 
+    General * DPSIR + 
+    MonitoringandSurveillance * DPSIR + 
+    AwarenessandEducation * DPSIR + 
+    GDPcap_mean * DPSIR + 
+    PopDensity * DPSIR + 
+    gini * DPSIR + 
+    prod.per.area * DPSIR + 
+    meantmpAreaPop * DPSIR + 
+    x0008 * DPSIR + 
+    (1 | ISO3), 
+    data = dframe.gc.aS.noDr)
+globmod.dframe.gc.aS.noDr_sum <- summary(globmod.dframe.gc.aS.noDr) 
+```
+
+### 6- globmod.dframe.gc.aI.noDr
+
+```{r LMIC dframe.gc.aI.noDr}
+###dframe.gc.aI.noDr
+dframe.gc.aI.noDr.con <- dpsir %>%
+  select(ISO3, DPSIR) %>% 
+  pivot_wider(names_from = DPSIR, values_from = DPSIR) %>% 
+  filter(!is.na(DRI))
+dframe.gc.aI.noDr <- dpsir[dpsir$ISO3 %in% dframe.gc.aI.noDr.con$ISO3, ] %>% select(-c("sanTotal","infTotal","vacTotal", "workTotal")) %>% na.omit()
+
+globmod.dframe.gc.aI.noDr <- lmer(formula= change  ~ 
+                                    RESPONSE * DPSIR + 
+                                    General * DPSIR + 
+                                    MonitoringandSurveillance * DPSIR + 
+                                    AwarenessandEducation * DPSIR + 
+                                    GDPcap_mean * DPSIR + 
+                                    PopDensity * DPSIR + 
+                                    gini * DPSIR + 
+                                    prod.per.area * DPSIR + 
+                                    meantmpAreaPop * DPSIR + 
+                                    x0008 * DPSIR + 
+                                    (1 | ISO3), 
+                                  data = dframe.gc.aI.noDr)
+
+globmod.dframe.gc.aI.noDr_sum <- summary(globmod.dframe.gc.aI.noDr) 
+```
+
+### 7- globmod.dframe.gc.aP
+
+```{r LMIC dframe.gc.aP}
+###dframe.gc.aP
+dframe.gc.aP.con <- dpsir %>%
+  select(ISO3, DPSIR) %>% 
+  pivot_wider(names_from = DPSIR, values_from = DPSIR) %>% 
+  filter(!is.na(USE))
+dframe.gc.aP <- dpsir[dpsir$ISO3 %in% dframe.gc.aP.con$ISO3, ] %>% na.omit()
+
+globmod.dframe.gc.aP <- lmer(formula = change ~ 
+    RESPONSE * DPSIR + 
+    General * DPSIR + 
+    MonitoringandSurveillance * DPSIR + 
+    AwarenessandEducation * DPSIR + 
+    sanTotal * DPSIR + 
+    infTotal * DPSIR + 
+    workTotal * DPSIR + 
+    vacTotal * DPSIR + 
+    GDPcap_mean * DPSIR + 
+    PopDensity * DPSIR + 
+    gini * DPSIR + 
+    prod.per.area * DPSIR + 
+    meantmpAreaPop * DPSIR + 
+    x0008 * DPSIR + 
+    (1 | ISO3), 
+    data = dframe.gc.aP)
+globmod.dframe.gc.aP_sum <- summary(globmod.dframe.gc.aP) 
+
+```
+
+### 8- globmod.dframe.gc.aS
+
+```{r LMIC dframe.gc.aS}
+###dframe.gc.aS
+dframe.gc.aS.con <- dpsir %>%
+  select(ISO3, DPSIR) %>% 
+  pivot_wider(names_from = DPSIR, values_from = DPSIR) %>% 
+  filter(!is.na(RESISTANCE))
+dframe.gc.aS <- dpsir[dpsir$ISO3 %in% dframe.gc.aS.con$ISO3, ] %>% na.omit()
+
+globmod.dframe.gc.aS <- lm(formula= change  ~  
+                               RESPONSE*DPSIR +
+                               General*DPSIR + 
+                               MonitoringandSurveillance*DPSIR + 
+                               AwarenessandEducation*DPSIR  + 
+                               sanTotal*DPSIR + 
+                               infTotal*DPSIR + 
+                               workTotal*DPSIR  + 
+                               vacTotal*DPSIR  + 
+                               GDPcap_mean*DPSIR +  
+                               PopDensity*DPSIR + 
+                               gini*DPSIR + 
+                               prod.per.area*DPSIR + 
+                               meantmpAreaPop*DPSIR + 
+                               x0008*DPSIR 
+                               , data = dframe.gc.aS)
+globmod.dframe.gc.aS_sum <- summary(globmod.dframe.gc.aS) 
+
+```
+
+### 9- globmod.dframe.gc.aI
+
+```{r LMIC dframe.gc.aI}
+###dframe.gc.aI
+dframe.gc.aI.con <- dpsir %>%
+  select(ISO3, DPSIR) %>% 
+  pivot_wider(names_from = DPSIR, values_from = DPSIR) %>% 
+  filter(!is.na(DRI))
+dframe.gc.aI <- dpsir[dpsir$ISO3 %in% dframe.gc.aI.con$ISO3, ] %>% na.omit()
+
+globmod.dframe.gc.aI <- lm(formula= change  ~  
+                               RESPONSE*DPSIR +
+                               General*DPSIR + 
+                               MonitoringandSurveillance*DPSIR + 
+                               AwarenessandEducation*DPSIR  + 
+                               sanTotal*DPSIR + 
+                               infTotal*DPSIR + 
+                               workTotal*DPSIR  + 
+                               vacTotal*DPSIR  + 
+                               GDPcap_mean*DPSIR +  
+                               PopDensity*DPSIR + 
+                               gini*DPSIR + 
+                               prod.per.area*DPSIR + 
+                               meantmpAreaPop*DPSIR + 
+                               x0008*DPSIR 
+                               , data = dframe.gc.aI)
+globmod.dframe.gc.aI_sum <-summary(globmod.dframe.gc.aI)
+
+```
+
+### *10- globmod.dframe.iD
+
+```{r LMIC dframe.iD}
+# dframe.iD
+ driver_lvl2 <- dpsir_final %>% 
+  filter(level== "level 2" & DPSIR == "DRIVERS") %>% select(c("ISO3", "income", "SHORTNAME", "DPSIR", "change", "x0008" )) %>% 
+  unique() %>% 
+  left_join(eco_vars, by = c("ISO3"))
+
+driver_lvl2_df_mod <- driver_lvl2 %>% left_join(survey_vars, by="ISO3") 
+
+dframe.iD.con <- dpsir_final %>%
+  select(ISO3, DPSIR) %>% unique() %>% 
+  pivot_wider(names_from = DPSIR, values_from = DPSIR) %>% 
+  filter(!is.na(USE) | !is.na(RESISTANCE) | !is.na(DRI))
+# select those countries from the conditioned dataframe
+dframe.iD <- driver_lvl2_df_mod[driver_lvl2_df_mod$ISO3 %in% dframe.iD.con$ISO3, ] %>% na.omit()
+dframe.iD$ISO3 <- as.factor(dframe.iD$ISO3)
+dframe.iD$DPSIR <- as.factor(dframe.iD$DPSIR)
+### THIS MODEL IS EXCLUDED BECAUSE THE DF HAS ONLY ! TYPE OF DPSIR CATEGORY HENCE CANT BE INCLUDED AS AN INTERACTION EFFECT
+### globmod.dframe.iD
+globmod.dframe.iD <- lmer(formula= change  ~
+                            RESPONSE +
+                            General +
+                            MonitoringandSurveillance+
+                            AwarenessandEducation+
+                            GDPcap_mean+
+                            PopDensity+
+                            gini+
+                            prod.per.area+
+                            meantmpAreaPop+
+                            x0008+
+                            (1|ISO3) +
+                            (1|SHORTNAME),
+                            data = dframe.iD)
+
+globmod.dframe.iD_sum <- summary(globmod.dframe.iD)
+```
+
+### *11- globmod.dframe.iP
+
+```{r LMIC  globmod.dframe.iP}
+# dframe.iP
+ use_lvl2 <- dpsir_final %>% 
+  filter(level== "level 2" & DPSIR == "USE") %>% select(c("ISO3", "income", "change", "x0008","SHORTNAME", "DPSIR")) %>% 
+  unique()
+use_lvl2_eco_vars <- use_lvl2 %>% left_join(eco_vars, by = c("ISO3")) %>% select(-c("DPSIR"))
+
+use_lvl2_df_mod <- use_lvl2_eco_vars %>% left_join(survey_vars, by ="ISO3") %>% left_join(driver_comp_x0008 %>% select(-c("DPSIR")), by="ISO3")
+use_lvl2_df_mod$ISO3 <- as.factor(use_lvl2_df_mod$ISO3)
+##dframe.iP and use_lvl2_df_mod are identical
+dframe.iP <- use_lvl2_df_mod %>% na.omit()
+
+globmod.dframe.iP <-  lmer(formula= change  ~
+                            RESPONSE+
+                            General+
+                            MonitoringandSurveillance+
+                            AwarenessandEducation+
+                            sanTotal + 
+                            infTotal +
+                            workTotal +
+                            vacTotal + 
+                            GDPcap_mean+
+                            PopDensity+
+                            gini+
+                            prod.per.area+
+                            meantmpAreaPop+
+                            x0008+
+                            (1|ISO3) + 
+                            (1|SHORTNAME),
+                           data = dframe.iP)
+
+globmod.dframe.iP_sum <- summary(globmod.dframe.iP)
+
+```
+
+### *12- globmod.dframe.iS
+
+```{r LMIC globmod.dframe.iS}
+# dframe.iS
+ resistance_lvl2 <- dpsir_final %>% 
+  filter(level== "level 2" & DPSIR == "RESISTANCE") %>% select(c("ISO3", "income","change", "SHORTNAME", "DPSIR" , "x0008")) %>% 
+  unique() 
+resistance_lvl2_df <- resistance_lvl2 %>% left_join(eco_vars, by = c("ISO3")) %>% select(-c("DPSIR"))
+
+resistance_lvl2_df_mod <- resistance_lvl2_df %>%left_join(survey_vars, by ="ISO3") %>% left_join(driver_comp_x0008 %>% select(-c("DPSIR")), by="ISO3")
+
+resistance_lvl2_df_mod$ISO3 <- as.factor(resistance_lvl2_df_mod$ISO3)
+resistance_lvl2_df_mod$SHORTNAME <- as.factor(resistance_lvl2_df_mod$SHORTNAME)
+
+##dframe.iS and resistance_lvl2_df_mod are identical
+dframe.iS <- resistance_lvl2_df_mod %>% drop_na()
+
+globmod.dframe.iS <- lmer(formula= change  ~
+                            RESPONSE+
+                            General+
+                            MonitoringandSurveillance+
+                            AwarenessandEducation+
+                            sanTotal + 
+                            infTotal +
+                            workTotal +
+                            vacTotal + 
+                            GDPcap_mean+
+                            PopDensity+
+                            gini+
+                            prod.per.area+
+                            meantmpAreaPop+
+                            x0008+
+                            (1|ISO3) + 
+                            (1|SHORTNAME),
+                            data = dframe.iS)
+
+globmod.dframe.iS_sum <- summary(globmod.dframe.iS)
+
+```
+
+### * 13- globmod.dframe.gcI-NA
+
+```{r}
+# dframe.gcI
+DRI <- dpsir_final %>% 
+  filter(DPSIR == "DRI") %>% 
+  select(c("ISO3", "income", "SHORTNAME", "DPSIR", "x0008", "change")) %>% 
+  unique()
+
+DRI_df <- DRI %>% 
+  left_join(eco_vars, by = c("ISO3"))
+#%>%   select(-c("DPSIR"))
+
+DRI_df_mod <- DRI_df %>% 
+  left_join(survey_vars, by ="ISO3") %>% left_join(driver_comp_x0008 %>% select(-c("DPSIR")), by="ISO3")
+
+DRI_df_mod$ISO3 <- as.factor(DRI_df_mod$ISO3)
+
+##dframe.gcI and DRI_df_mod are identical
+dframe.gcI <- DRI_df_mod %>% drop_na() #%>% select(-c("SHORTNAME"))
+dframe.gcI$ISO3 <- as.factor(dframe.gcI$ISO3)
+
+globmod.dframe.gcI <- lm(formula=change ~
+                             RESPONSE+
+                             General+
+                             MonitoringandSurveillance+
+                             AwarenessandEducation+
+                             infTotal+
+                             sanTotal+
+                             vacTotal+
+                             workTotal+
+                             GDPcap_mean+
+                             PopDensity+
+                             gini+
+                             prod.per.area+
+                             meantmpAreaPop+
+                             x0008,
+                              data = dframe.gcI)
+globmod.dframe.gcI_sum <- summary(globmod.dframe.gcI)
+```
+
+### 14- globmod.dframe.gcDPS
+
+```{r}
+###dframe.gcDPS
+dframe.gcDPS.con <- dpsir %>%
+  select(ISO3, DPSIR) %>% 
+  pivot_wider(names_from = DPSIR, values_from = DPSIR) %>% 
+  filter(!is.na(USE) | !is.na(RESISTANCE))
+# select those countries from the conditioned dataframe
+dframe.gcDPS <- dpsir[dpsir$ISO3 %in% dframe.gcDPS.con$ISO3, ] %>%  
+  filter(! DPSIR == "DRI") %>% drop_na()
+
+globmod.dframe.gcDPS <- lmer(formula= change  ~  
+                               RESPONSE*DPSIR + 
+                               General*DPSIR + 
+                               MonitoringandSurveillance*DPSIR + 
+                               AwarenessandEducation*DPSIR + 
+                               sanTotal*DPSIR + 
+                               infTotal*DPSIR + 
+                               workTotal*DPSIR + 
+                               vacTotal*DPSIR + 
+                               GDPcap_mean*DPSIR +
+                               PopDensity*DPSIR + 
+                               gini*DPSIR + 
+                               prod.per.area*DPSIR + 
+                               meantmpAreaPop*DPSIR + 
+                               x0008*DPSIR +
+                               (1|ISO3), data = dframe.gcDPS)
+globmod.dframe.gcDPS_sum <- summary(globmod.dframe.gcDPS) 
+```
+
+### 15- globmod.dframe.gcPSI
+
+```{r}
+###dframe.gcPSI
+dframe.gcPSI.con <- dpsir %>%
+  select(ISO3, DPSIR) %>% 
+  pivot_wider(names_from = DPSIR, values_from = DPSIR) %>% 
+  filter(!is.na(USE) | !is.na(RESISTANCE) | !is.na(DRI))
+# select those countries from the conditioned dataframe
+dframe.gcPSI <- dpsir[dpsir$ISO3 %in% dframe.gcPSI.con$ISO3, ] %>%  filter(! DPSIR == "DRIVERS") %>% drop_na()
+options(na.action = "na.omit")
+
+globmod.dframe.gcPSI <- lmer(formula= change  ~  
+                               RESPONSE*DPSIR + 
+                               General*DPSIR + 
+                               MonitoringandSurveillance*DPSIR + 
+                               AwarenessandEducation*DPSIR + 
+                               sanTotal*DPSIR + 
+                               infTotal*DPSIR + 
+                               workTotal*DPSIR + 
+                               vacTotal*DPSIR + 
+                               GDPcap_mean*DPSIR +
+                               PopDensity*DPSIR + 
+                               gini*DPSIR + 
+                               prod.per.area*DPSIR + 
+                               meantmpAreaPop*DPSIR + 
+                               x0008*DPSIR +
+                               (1|ISO3),
+                               data = dframe.gcPSI)
+globmod.dframe.gcPSI_sum <- summary(globmod.dframe.gcPSI) 
+```
+
+### 16- globmod.dframe.gcDP
+
+```{r}
+###dframe.gcDP
+dframe.gcDP.con <-  dpsir %>%
+  select(ISO3, DPSIR) %>% 
+  pivot_wider(names_from = DPSIR, values_from = DPSIR) %>% 
+  filter(!is.na(USE))
+# select those countries from the conditioned dataframe
+dframe.gcDP <- dpsir[dpsir$ISO3 %in% dframe.gcDP.con$ISO3, ] %>%  filter(DPSIR == "DRIVERS" | DPSIR == "USE") %>% drop_na()
+
+globmod.dframe.gcDP <- lmer(formula= change  ~  
+                               RESPONSE*DPSIR + 
+                               General*DPSIR + 
+                               MonitoringandSurveillance*DPSIR + 
+                               AwarenessandEducation*DPSIR + 
+                               sanTotal*DPSIR + 
+                               infTotal*DPSIR + 
+                               workTotal*DPSIR + 
+                               vacTotal*DPSIR + 
+                               GDPcap_mean*DPSIR +
+                               PopDensity*DPSIR + 
+                               gini*DPSIR + 
+                               prod.per.area*DPSIR + 
+                               meantmpAreaPop*DPSIR + 
+                               x0008*DPSIR +
+                               (1|ISO3), data = dframe.gcDP)
+globmod.dframe.gcDP_sum <- summary(globmod.dframe.gcDP) 
+
+```
+
+### 17- globmod.dframe.gcPS
+
+```{r}
+###dframe.gcPS
+dframe.gcPS.con <-  dpsir %>%
+  select(ISO3, DPSIR) %>% 
+  pivot_wider(names_from = DPSIR, values_from = DPSIR) %>% 
+  filter(!is.na(USE)| !is.na(RESISTANCE))
+# select those countries from the conditioned dataframe
+dframe.gcPS <- dpsir[dpsir$ISO3 %in% dframe.gcPS.con$ISO3, ] %>%  filter(DPSIR == "USE" | DPSIR == "RESISTANCE") %>% drop_na()
+
+globmod.dframe.gcPS <- lmer(formula= change  ~  
+                               RESPONSE*DPSIR + 
+                               General*DPSIR + 
+                               MonitoringandSurveillance*DPSIR + 
+                               AwarenessandEducation*DPSIR + 
+                               sanTotal*DPSIR + 
+                               infTotal*DPSIR + 
+                               workTotal*DPSIR + 
+                               vacTotal*DPSIR + 
+                               GDPcap_mean*DPSIR +
+                               PopDensity*DPSIR + 
+                               gini*DPSIR + 
+                               prod.per.area*DPSIR + 
+                               meantmpAreaPop*DPSIR + 
+                               x0008*DPSIR +
+                               (1|ISO3),data = dframe.gcPS)
+globmod.dframe.gcPS_sum <- summary(globmod.dframe.gcPS) 
+
+```
+
+### 18- globmod.dframe.gcSI -NA
+
+```{r}
+###dframe.gcSI
+dframe.gcSI.con <- dpsir %>%
+  select(ISO3, DPSIR) %>% 
+  pivot_wider(names_from = DPSIR, values_from = DPSIR) %>% 
+  filter(!is.na(RESISTANCE) | !is.na(DRI))
+# select those countries from the conditioned dataframe
+dframe.gcSI <- dpsir[dpsir$ISO3 %in% dframe.gcSI.con$ISO3, ] %>%  filter(DPSIR == "RESISTANCE" | DPSIR == "DRI") %>% drop_na()
+
+globmod.dframe.gcSI <- lm(formula= change  ~  
+                               RESPONSE*DPSIR + 
+                               General*DPSIR + 
+                               MonitoringandSurveillance*DPSIR + 
+                               AwarenessandEducation*DPSIR + 
+                               sanTotal*DPSIR + 
+                               infTotal*DPSIR + 
+                               workTotal*DPSIR + 
+                               vacTotal*DPSIR + 
+                               GDPcap_mean*DPSIR +
+                               PopDensity*DPSIR + 
+                               gini*DPSIR + 
+                               prod.per.area*DPSIR + 
+                               meantmpAreaPop*DPSIR + 
+                               x0008*DPSIR 
+                               , data = dframe.gcSI)
+
+globmod.dframe.gcSI_sum <- summary(globmod.dframe.gcSI) 
+
+```
+
+#### LIST 
+
+```{r}
+
+# First clear all the unneccessary data. 
+## Clear the condition dataframes
+rm(list = ls()[grepl("\\.con$", ls())])
+rm(list = ls()[grepl("\\_lvl2", ls())])
+rm(DRI, DRI_df, DRI_df_mod)
+
+#ls(pattern = "^dframe\\.")
+#Make a large list from all existing dataframes
+LMIC_df_list <- mget(c(
+  "dframe.gc",
+  "dframe.gc.noDr",
+  "dframe.gc.aP.noDr",
+  "dframe.gc.aS.noDr",
+  "dframe.gc.aI.noDr",
+  "dframe.gc.aP",
+  "dframe.gc.aS",
+  "dframe.gc.aI",
+  "dframe.iD",
+  "dframe.iP",
+  "dframe.iS",
+  "dframe.gcI",
+  "dframe.gcDPS",
+  "dframe.gcPSI",
+  "dframe.gcDP",
+  "dframe.gcPS",
+  "dframe.gcSI"
+))
+
+#save globmod list
+LMIC_globmod_list <- list(globmod.rDPSIRir2,
+                     globmod.rDPSIRir2.noDr,               
+                     globmod.dframe.gc.aP.noDr,
+                     globmod.dframe.gc.aS.noDr,
+                     globmod.dframe.gc.aI.noDr,
+                     globmod.dframe.gc.aP,
+                     globmod.dframe.gc.aS,
+                     globmod.dframe.gc.aI,
+                     globmod.dframe.iD,           
+                     globmod.dframe.iP,
+                     globmod.dframe.iS,
+#                     globmod.dframe.gcI,
+                     globmod.dframe.gcDPS, 
+                     globmod.dframe.gcPSI,
+                     globmod.dframe.gcDP,
+                     globmod.dframe.gcPS)
+#                     globmod.dframe.gcSI)
+
+save.image(file = here("3.Model_Selection/3.1.CHANGE/3.1.3.LMIC_CHANGE", "LMIC_Define_Models_input.RData"))
+```

@@ -1,0 +1,163 @@
+---
+title: "Supplementary documents"
+date: " Last edited `r format(Sys.time(), '%B %d, %Y')`"
+output:
+  word_document: default
+---
+
+```{r setup, message=FALSE, include=FALSE}
+knitr::opts_chunk$set(
+	echo = FALSE,
+	message = FALSE,
+	warning = FALSE
+)
+
+pacman::p_load(rio,
+               here,
+               gt,
+               broom.mixed,
+               flextable,
+               tidyverse)
+
+# Making a table of content
+devtools::source_gist("c83e078bf8c81b035e32c3fc0cf04ee8",
+                      filename = 'render_toc.R')
+```
+
+# Table of Contents
+
+```{r toc, echo=FALSE} 
+# render_toc("Supplementary documents.Rmd")
+```
+
+```{r load data}
+load(here("0.data", "dpsir_clean_x0008_countriesfiltered241207.RData"))
+```
+
+# S1 Table - List of countries included in the study
+
+```{r  s1-table}
+summary_df <- import(here("0.data", "response_v2.csv")) %>% 
+  select(c("EORA_a3", "Country", "Global.Region", "Continent")) %>% 
+  distinct() %>% 
+  mutate(Country = recode(Country, "The former Yugoslav Republic of Macedonia"=  "North Macedonia")) %>%
+  dplyr::rename(ISO3 ="EORA_a3")
+
+
+summary_df <- dpsir  %>%
+  select(c("ISO3", "change", "RESPONSE", "income")) %>%
+  na.omit() %>% 
+  select(c("ISO3", "income")) %>% 
+  distinct() %>%
+  left_join(summary_df, by="ISO3") %>% 
+  rename(Income = "income") %>% 
+  select(c("ISO3", "Country", "Continent","Income"))
+summary_df$Continent[summary_df$Continent == "Australia"] <- "Oceania"
+summary_df$Continent[summary_df$Continent == "North America and Caribbean"] <- "North America"
+summary_df$Continent[summary_df$Continent == "South and Central America"] <- "South America"
+
+summary_df %>% 
+  arrange(ISO3)  %>%  
+  gt(groupname_col = "Continent") %>%
+  tab_style(
+    style = list(cell_text(weight = "bold")),
+    locations = cells_row_groups()) %>%
+  tab_footnote(
+    footnote = "Number of Countries = 73")  %>%
+  tab_footnote(
+    footnote = "HIC refers for High Income Countries, LMIC refers for Low and Middle Income Countries")
+```
+
+\pagebreak
+
+# S2 Table. Indicator selection for Driver categories.
+
+\pagebreak
+
+# S3 Table. Indicator selection for Use and Resistance categories.
+
+\pagebreak
+
+# S4 Table. Indicator selection for DRI (exposure) category.
+
+\pagebreak
+
+# S5 Table. Ecological variables used as covariates.
+
+\pagebreak
+
+# S6 Table. Governance Syndrome questions.
+
+\pagebreak
+
+# S7 Table - Action categories and subcategories
+
+```{r}
+response_categories <- data.frame(
+  `Action sub categories` = c(
+    "AMR Training (Human Health)",
+    "AMR Training (Animal Health and Food Prod)",
+    "AMR Awareness (Human Health)",
+    "AMR Awareness (Animal Health and Food Prod)",
+    "Monitoring System for AMU (Animals and Crop)",
+    "AMR Surveillance System (Humans)",
+    "Monitoring System for AMU (Human Health)",
+    "AMR Surveillance System (Animals and Foods)",
+    "Veterinary Services",
+    "One Health Arrangements",
+    "NAP progress",
+    "AMS and Regulation (Human)",
+    "AMS and Regulation (Ani&Crop)",
+    "Contamination Prevention",
+    "IPC",
+    "AMU Prevention"
+  ),
+  Category = c(
+    "Awareness and Education",
+    "Awareness and Education",
+    "Awareness and Education",
+    "Awareness and Education",
+    "Monitoring and Surveillance",
+    "Monitoring and Surveillance",
+    "Monitoring and Surveillance",
+    "Monitoring and Surveillance",
+    "General",
+    "General",
+    "General",
+    "Regulation",
+    "Regulation",
+    "Regulation",
+    "Prevention",
+    "Prevention"
+  )
+)
+
+response_categories %>% 
+  rename("Action sub-categories" = `Action.sub.categories`) %>% 
+  gt(groupname_col = "Category") %>%
+  tab_style(
+    style = list(cell_text(weight = "bold")),
+    locations = cells_row_groups()) %>%
+  tab_header("The overall governmental action score (action) is calculated as the average of subcategories (Awareness and Education, Monitoring and Surveillance, General, Regulation, Prevention).") %>% 
+  tab_footnote(
+    footnote = "Subcategories are not included in Animal Data Analysis and Figure 4",
+    locations = cells_body(columns = `Action sub-categories`, rows = c(9, 10, 11, 15, 16))
+  ) %>% 
+  opt_footnote_marks(marks = "standard")
+
+
+```
+
+\pagebreak
+
+# S8 Table. Model Formulas for Association between Action and Indicator Linear Trend and Categorical Trend
+\pagebreak
+
+#S12-S24 Tables
+\pagebreak
+
+```{r child-document4, child='2.2s.ActionCategories.Rmd', echo=FALSE}
+
+```
+
+

@@ -1,0 +1,525 @@
+---
+title: "AMR Analysis"
+author: "Ege Pehlivanoglu"
+date: " Last Edited `r format(Sys.time(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    code_folding: show
+    theme: lumen
+    highlight: pygments
+---
+
+```{r setup the packages, message=FALSE}
+knitr::opts_chunk$set(
+	message = FALSE,
+	warning = FALSE)
+
+pacman::p_load("readr",
+               "tidyverse",
+               "gt",
+               "lmerTest",
+               "afex",
+               "broom",
+               "rstatix",
+               "here")
+# dataset used for these analyses called dpsir_final and created in 1.create_data.Rmd which is sourced in following chunk.
+load(here("0.data", "dpsir_clean_x0008_countriesfiltered241207.RData"))
+```
+
+# Human Data Sample Size Check
+
+```{r Sample Size checks, echo=TRUE}
+dpsir_final %>% filter(DPSIR== "DRIVERS") %>%  select(c("ISO3", "change")) %>% drop_na() %>% select(c("ISO3")) %>% n_distinct()
+# All Drivers 79 but only 73 has survey_vars, ecological vars etc.
+dpsir_final %>% filter( DPSIR== "DRIVERS")%>% filter( SHORTNAME== "infTotal") %>%  select(c("ISO3", "change")) %>% drop_na() %>% select(c("ISO3"))%>%   n_distinct()
+#infTotal 79
+dpsir_final %>% filter( DPSIR== "DRIVERS")%>% filter( SHORTNAME== "sanTotal") %>%  select(c("ISO3", "change")) %>% drop_na() %>% select(c("ISO3"))%>%   n_distinct()
+# sanTotal 77
+dpsir_final %>% filter( DPSIR== "DRIVERS")%>% filter( SHORTNAME== "vacTotal") %>%  select(c("ISO3", "change")) %>% drop_na() %>% select(c("ISO3"))%>%   n_distinct()
+# vacTotal 77
+dpsir_final %>% filter( DPSIR== "DRIVERS")%>% filter( SHORTNAME== "workTotal") %>%  select(c("ISO3", "change")) %>% drop_na() %>% select(c("ISO3"))%>%   n_distinct()
+#work Total 56
+### USE-----
+dpsir_final %>% filter( DPSIR== "USE") %>%  select(c("ISO3", "change")) %>% drop_na() %>% select(c("ISO3"))%>%   n_distinct()
+#Use 71 but only 65 has survey_vars, ecological vars etc.
+#data.df %>% filter( DPSIR== "PRESSURE") %>% filter(SPECIES =="HUMAN") %>% select(c("ISO3", "x0816")) %>% na.omit() %>% select(c("ISO3"))%>%   n_distinct()
+### 76 came from here. 
+
+## RESISTANCE-------
+# data.df %>% filter( DPSIR== "STATE") %>% filter(SPECIES =="HUMAN") %>% select(c("ISO3", "x0816")) %>% na.omit() %>% select(c("ISO3"))%>%   n_distinct()
+#Resistance availability 53
+ dpsir_final %>% filter( DPSIR== "RESISTANCE") %>% filter(SPECIES =="HUMAN") %>% select(c("ISO3", "change")) %>% na.omit() %>% select(c("ISO3"))%>%   n_distinct()
+# Resistance 33 but only 32 has survey_vars, ecological vars etc.
+# # DRI
+dpsir_final %>% filter( SHORTNAME== "DRI") %>% filter(SPECIES =="HUMAN") %>% select(c("ISO3", "change", "RESPONSE")) %>% na.omit() %>% select(c("ISO3")) %>% n_distinct()
+# # DRI 26 but only 25 has RESPONSE.
+
+dpsir %>% filter( DPSIR== "DRIVERS") %>% filter(SPECIES =="HUMAN") %>% select(c("ISO3", "change", "RESPONSE")) %>% na.omit() %>% select(c("ISO3")) %>% n_distinct()
+
+dpsir %>% filter( DPSIR== "USE") %>% filter(SPECIES =="HUMAN") %>% select(c("ISO3", "change", "RESPONSE")) %>% na.omit() %>% select(c("ISO3")) %>% n_distinct()
+
+dpsir %>% filter( DPSIR== "RESISTANCE") %>% filter(SPECIES =="HUMAN") %>% select(c("ISO3", "change", "RESPONSE")) %>% na.omit() %>% select(c("ISO3")) %>% n_distinct()
+
+dpsir %>% filter( DPSIR== "DRI") %>% filter(SPECIES =="HUMAN") %>% select(c("ISO3", "change", "RESPONSE")) %>% na.omit() %>% select(c("ISO3")) %>% n_distinct()
+
+```
+
+# Action vs Change Plot
+
+```{r Models, echo=FALSE, message=FALSE, warning=FALSE}
+## Models------------
+## NOTE! Response stated action sample size is not included in this analysis. 
+driv_con_mod <- lmer(data = dpsir %>% filter(DPSIR == "DRIVERS"),
+      formula = change ~ RESPONSE + x0008 + (1|income))
+driv_con_mod_sum <- summary(driv_con_mod)
+driv_bin_mod <- lmerTest::lmer(data = dpsir %>% filter(DPSIR == "DRIVERS"),
+      formula = RESPONSE ~ as.factor(sign) + x0008 + (1|income))
+driv_bin_mod_sum <- summary(driv_bin_mod)
+
+
+use_con_mod <- lmerTest::lmer(data = dpsir %>% filter(DPSIR == "USE"),
+      formula = change ~ RESPONSE + x0008 +(1|income))
+use_con_mod_sum <- summary(use_con_mod)
+use_bin_mod <- lmerTest::lmer(data = dpsir %>% filter(DPSIR == "USE"),
+      formula = RESPONSE ~  as.factor(sign) + x0008+ (1|income))
+use_bin_mod_sum <- summary(use_bin_mod)
+
+res_con_mod <- lmerTest::lmer(data = dpsir %>% filter(DPSIR == "RESISTANCE"),
+      formula = change ~ RESPONSE + x0008 +(1|income))
+res_con_mod_sum <- summary(res_con_mod)
+res_bin_mod<- lmerTest::lmer(data = dpsir %>% filter(DPSIR == "RESISTANCE"),
+      formula = RESPONSE ~ as.factor(sign)+ x0008 + (1|income)) 
+res_bin_mod_sum <- summary(res_bin_mod)
+
+dri_con_mod <- lmerTest::lmer(data = dpsir %>% filter(DPSIR == "DRI"),
+      formula = change ~ RESPONSE + x0008 + (1|income)) 
+dri_con_mod_sum <- summary(dri_con_mod)
+
+dri_bin_mod <- lmerTest::lmer(data = dpsir %>% filter(DPSIR == "DRI"),
+      formula = RESPONSE ~ as.factor(sign) + x0008 + (1|income))
+dri_bin_mod_sum <- summary(dri_bin_mod)
+
+## predicted values----------------
+driv_con_mod_predict <- ggeffects::ggpredict(driv_con_mod,"RESPONSE")
+use_con_mod_predict <- ggeffects::ggpredict(use_con_mod,"RESPONSE")
+res_con_mod_predict <- ggeffects::ggpredict(res_con_mod,"RESPONSE")
+dri_con_mod_predict <- ggeffects::ggpredict(dri_con_mod,"RESPONSE")
+
+mr2.pred<-data.frame(
+  "RESPONSE"=c(driv_con_mod_predict$x, use_con_mod_predict$x, res_con_mod_predict$x, dri_con_mod_predict$x),
+  "change"=c(driv_con_mod_predict$predicted,use_con_mod_predict$predicted,res_con_mod_predict$predicted,dri_con_mod_predict$predicted), 
+  "ci.low"=c(driv_con_mod_predict$conf.low,use_con_mod_predict$conf.low,res_con_mod_predict$conf.low,dri_con_mod_predict$conf.low),
+           "ci.high"=c(driv_con_mod_predict$conf.high,use_con_mod_predict$conf.high,res_con_mod_predict$conf.high,dri_con_mod_predict$conf.high),
+           "DPSIR"=factor(rep(c("DRIVERS","USE","RESISTANCE","DRI"),c(length(driv_con_mod_predict$x),length(use_con_mod_predict$x),length(res_con_mod_predict$x),length(dri_con_mod_predict$x)))))
+
+
+## plot p1------------------------
+
+dat_text <- data.frame(
+  label = c("p = 0.02", "p = 0.02", "p = 0.3", "p = 0.04"),
+  DPSIR   = c("DRIVERS", "USE", "RESISTANCE", "DRI"))
+
+try.col.vec<-scales::brewer_pal(palette="Set1")(5)[c(3,2,4,5,1)]
+letter.df<-data.frame("plot"=rep(c("mean","change","box"),each=4),"DPSIR"=rep(c("DRIVERS","USE","RESISTANCE","DRI"),3),"letter"=letters[1:12])#,test"=NA,"DPSIR"=NA,"pval"=NA)
+letter.df<-as.data.frame(apply(letter.df,2,as.character))
+letter.df[,"letter2"]<-c(rep(NA,4),letters[1:8])
+letter.df$letter2 <- toupper(letter.df$letter2) #change to capital letters
+
+dpsir <- dpsir %>%
+  mutate(
+    incvsdec = case_when(
+     change == 0 ~ "No Change",
+       change < 0 ~ "Decreasing",
+      change > 0 ~ "Increasing",
+      TRUE ~ "other"
+    )
+  )
+
+p1 <- ggplot(data=dpsir, aes(x=RESPONSE,y=change,colour=DPSIR)) + 
+  geom_point(aes(shape = income), alpha=0.8) + 
+  facet_wrap(~ DPSIR,nrow=1) + 
+  geom_line(data=mr2.pred,size=1,alpha=0.8) +
+  geom_ribbon(data=mr2.pred,aes(ymin = ci.low, ymax = ci.high), colour=NA, alpha = 0.1) + 
+  geom_smooth(data=dpsir, 
+              aes(group = income, linetype = income),
+              method="lm", 
+              se=FALSE, 
+              colour="black", 
+              linewidth=0.3, 
+              alpha=0.1) + 
+  scale_colour_manual(values=try.col.vec[2:5]) + 
+  geom_hline(yintercept = 0) + 
+  geom_text(data=letter.df[which(letter.df[,"plot"]=="change"),],
+            aes(x=3.8,y = c(1,1,1,1),
+                label = letter2,
+                fontface = "bold"),
+                inherit.aes = FALSE) +
+  geom_text(data = dat_text,mapping = aes(x = -Inf, y = -Inf, label = label, color = DPSIR),
+            hjust   = -0.1, vjust   = -0.5) +
+  facet_grid(~factor(DPSIR, levels = c("DRIVERS", "USE", "RESISTANCE", "DRI"))) +
+  geom_hline(yintercept=0) +
+  scale_y_continuous(
+    limits = c(-1, 1),
+    breaks = c(-1, -0.5, 0, 0.5, 1)) +
+  scale_x_continuous(
+    limits = c(0, 4),
+    breaks = c(0, 1, 2, 3, 4)) +
+  guides(color = "none") +
+  theme_bw()+
+  theme(legend.position='top')+
+  theme(axis.text.x=element_blank(),
+#       legend.position= c(0.9, 0.1),
+        axis.title.x=element_blank(),
+        strip.text.x = element_blank()) +
+        labs(y = "Linear Trend (SD=1)")
+#+  guides(breaks = c(-0.5,0,0.5), labels = "incvsdec")
+
+## plot p2------------------
+dpsir_bin_plot <- dpsir %>% filter(!is.na(sign))
+
+
+dat_text2 <- data.frame(
+  label = c("p = 0.2", "p = 0.002", "p = 0.006", "p = 0.047"),
+  DPSIR   = c("DRIVERS", "USE", "RESISTANCE", "DRI"))
+dat_text2$DPSIR <- factor(dat_text2$DPSIR,levels=c("DRIVERS","USE","RESISTANCE","DRI"))
+
+p2 <- ggplot(data=dpsir_bin_plot,
+             aes(y = RESPONSE, x=factor(sign), fill = DPSIR)) +
+  geom_boxplot(alpha=0.8) + 
+  facet_wrap(~ DPSIR,nrow=1) +
+  geom_text(data=letter.df[which(letter.df[,"plot"]=="box"),],
+            aes(x=2.5,y=3.8,label=letter2,fontface="bold")) + 
+  facet_wrap(~ DPSIR,nrow=1) +
+  # geom_text(dpsir_bin_plot, 
+  #           mapping = aes(x = -Inf, y = -Inf, label = p.label, color = DPSIR),
+  #           hjust = -0.1, vjust = -0.5) +
+   geom_text(data = dat_text2,mapping = aes(x = -Inf, y = -Inf, label = label, color =DPSIR),
+            hjust   = -0.1, vjust   = -0.5) +
+  scale_fill_manual(values = try.col.vec[2:5]) +  # Using fill for boxplot
+  scale_colour_manual(values=try.col.vec[2:5]) +
+  scale_y_continuous(
+    limits = c(0, 4),
+    breaks = c(0, 1, 2, 3, 4)) +
+  facet_grid(~factor(DPSIR, levels=c("DRIVERS", "USE", "RESISTANCE", "DRI"))) +
+  guides(color = "none")+ 
+  xlab("Categorical Trend [+/-]") + 
+  ylab("Action index [0-4]") + 
+  coord_flip() +
+#  labs(caption = "Sample Sizes Response Stated Action= 148;  Drivers=73; Use=65; Resistance=32; DRI=25") +
+  theme_bw() +
+  theme(legend.position="none", 
+        strip.text.x = element_blank()) 
+pdf("plots/Fig2.pdf", width=12, height=6)
+cowplot::plot_grid(p1, p2, ncol = 1, nrow = 2, align = "v", axis = 'l') 
+dev.off()
+
+## checking quartiles on plot 2 for reporting
+ggplot_build(p2)
+
+```
+
+# De-escalation Plot
+
+```{r deescalation plot, echo=FALSE}
+dpsir_final2 <- dpsir_final %>%  filter(!is.na(RESPONSE))
+# create the df
+
+# DRIVERS----
+dri.vec <- c("sanTotal","infTotal", "vacTotal", "workTotal")
+DRIVERS <- dpsir_final2 %>% filter(DPSIR== "DRIVERS") %>%  select(c("ISO3",
+                                                                        "SHORTNAME",
+                                                                        "level",
+                                                                        "DPSIR",
+                                                                        "RESPONSE",
+                                                                       #  "x0008",
+                                                                        #  "change",
+                                                                        "income",
+                                                                        "sign")) %>%  unique() %>% filter(level=="level 2")
+DRIVERS <- DRIVERS %>% pivot_wider(names_from = SHORTNAME, values_from = sign)
+
+#add x0008 for initmean
+#driver_comp_new$x0008 <- driver_comp_new %>% select(-c("ISO3")) %>% rowMeans(na.rm = TRUE)
+driver_comp_new <- dpsir_final %>% filter(SHORTNAME== "sanTotal"|
+                                            SHORTNAME== "vacTotal"|
+                                            SHORTNAME== "infTotal"|
+                                            SHORTNAME== "workTotal") %>% 
+  select(c("ISO3", "DPSIR", "SHORTNAME", "x0008")) %>% 
+  pivot_wider(names_from = "SHORTNAME", values_from = "x0008")
+driver_comp_new$x0008 <-driver_comp_new %>% 
+  select(-c("ISO3", "DPSIR")) %>%rowMeans(na.rm = TRUE)
+
+DRIVERS <-DRIVERS %>%  left_join(y = driver_comp_new %>% select(c("ISO3", "x0008")), by = c("ISO3"))
+DRIVERS[,"dec"]<-apply(DRIVERS[,names(DRIVERS)%in%c(dri.vec)],1,function(x)length(which(x=="-")))
+DRIVERS[,"tot"]<-apply(DRIVERS[,names(DRIVERS)%in%c(dri.vec)],1,function(x)length(which(!is.na(x))))
+DRIVERS[,"dec.prop"]<-DRIVERS[,"dec"]/DRIVERS[,"tot"]
+DRIVERS <- as.data.frame(DRIVERS)
+DRIVERS[,"tot.alpha"]<-scales::rescale(DRIVERS[,"tot"],to=c(min(DRIVERS[,"tot"]),max(DRIVERS[,"tot"])))/max(DRIVERS[,"tot"])
+
+# USE ----
+use.vec <- c("NewABXUse", "BroadPerTotalABXUse", "TotalDDDPer1000Persons")
+USE <- dpsir_final2 %>% filter(DPSIR== "USE") %>%  select(c("ISO3",
+                                                                "SHORTNAME",
+                                                                "level",
+                                                                "DPSIR",
+                                                                "RESPONSE",                                                           
+                                                                #  "x0008",
+                                                                #  "change",
+                                                                "income",
+                                                                "sign")) %>%  unique() %>% filter(level=="level 2")
+USE <- USE %>% pivot_wider(names_from = SHORTNAME, values_from = sign)
+USE[,"dec"]<-apply(USE[,names(USE)%in%c(use.vec)],1,function(x)length(which(x=="-")))
+USE[,"tot"]<-apply(USE[,names(USE)%in%c(use.vec)],1,function(x)length(which(!is.na(x))))
+
+#use2 <- use2 %>% group_by("ISO3") %>% aggregate(dec ~ tot, FUN = function(x){NROW(x)})
+USE[,"dec.prop"]<-USE[,"dec"]/USE[,"tot"]
+#USE[,"weight"]<-apply(USE[,names(USE)%in%c(use.vec)],1,function(x)length(which(!is.na(x))))
+
+USE <- USE %>% select(c("ISO3", "dec", "tot", "dec.prop"))
+x <- dpsir_final2 %>% filter(DPSIR%in%"USE") %>% left_join(USE, by="ISO3") %>% filter(level== "level 2")
+
+# RESISTANCE 
+RES.vec <- c("CR", "STR", "MRSA")
+RESISTANCE <- dpsir_final2 %>% filter(DPSIR== "RESISTANCE") %>%  select(c("ISO3",
+                                                                              "SHORTNAME",
+                                                                              "level",
+                                                                              "DPSIR",
+                                                                              "RESPONSE",
+                                                                              #  "x0008",
+                                                                              #  "change",
+                                                                              "income",
+                                                                              "sign")) %>%  unique() %>% filter(level=="level 2")
+
+RESISTANCE <- RESISTANCE %>% pivot_wider(names_from = SHORTNAME, values_from = sign)
+RESISTANCE[,"dec"]<-apply(RESISTANCE[,names(RESISTANCE)%in%c(RES.vec)],1,function(x)length(which(x=="-")))
+RESISTANCE[,"tot"]<-apply(RESISTANCE[,names(RESISTANCE)%in%c(RES.vec)],1,function(x)length(which(!is.na(x))))
+RESISTANCE[,"dec.prop"]<-RESISTANCE[,"dec"]/RESISTANCE[,"tot"]
+#RESISTANCE[,"weight"]<-apply(RESISTANCE[,names(RESISTANCE)%in%c(use.vec)],1,function(x)length(which(!is.na(x))))
+
+RESISTANCE <- RESISTANCE %>% select(c("ISO3", "dec", "tot", "dec.prop"))
+y <- dpsir_final2 %>% filter(DPSIR%in%"RESISTANCE") %>% left_join(RESISTANCE, by="ISO3") %>% filter(level=="level 2")
+
+# DRI -----
+DRI.vec <- c("DRI")
+DRI <- dpsir_final2 %>% filter(DPSIR== "DRI") %>%  select(c("ISO3",
+                                                                "SHORTNAME",
+                                                                "level",
+                                                                "DPSIR",
+                                                                "RESPONSE",
+                                                                #  "x0008",
+                                                                #  "change",
+                                                                "income",
+                                                                "sign")) %>%  unique() %>% filter(SHORTNAME=="DRI")
+
+DRI <- DRI %>% pivot_wider(names_from = SHORTNAME, values_from = sign)
+DRI[,"dec"]<-apply(DRI[,names(DRI)%in%c(DRI.vec)],1,function(x)length(which(x=="-")))
+DRI[,"tot"]<-apply(DRI[,names(DRI)%in%c(DRI.vec)],1,function(x)length(which(!is.na(x))))
+DRI[,"dec.prop"]<-DRI[,"dec"]/DRI[,"tot"]
+#DRI[,"weight"]<-apply(DRI[,names(DRI)%in%c(DRI.vec)],1,function(x)length(which(!is.na(x))))
+
+DRI <- DRI %>% select(c("ISO3", "dec", "tot", "dec.prop"))
+z <- dpsir_final2 %>% filter(DPSIR%in%"DRI") %>% left_join(DRI, by="ISO3") %>% distinct()
+#z <- z %>% pivot_wider(names_from = SHORTNAME, values_from = change) %>% drop_na()
+#z$SHORTNAME <- c("DRI")
+
+all <- rbind.data.frame(x,y,z)
+
+all <- all %>%  select(c("ISO3",
+                         "SHORTNAME",
+                         "level",
+                         "DPSIR",
+                         "RESPONSE",
+                         "x0008",
+                         "change",
+                         "income",
+                         "sign", 
+                         "dec",
+                         "tot",
+                         "dec.prop"))
+all$DPSIR<- factor(all$DPSIR,
+                   levels=c("USE","RESISTANCE","DRI"))
+
+# convert to the wide format
+
+all_wide <- all  %>% group_by(ISO3) %>% select(c("ISO3","SHORTNAME", "DPSIR", "RESPONSE","change", "dec", "tot", "dec.prop"))  %>% distinct() %>%  pivot_wider(names_from = "SHORTNAME", values_from = "change") 
+mean_x0008 <- all %>%
+  group_by(ISO3, DPSIR) %>%
+  summarize(mean_x0008 = mean(x0008, na.rm = TRUE))
+all_wide <- all_wide %>% left_join(mean_x0008, by=c("ISO3", "DPSIR"))
+
+all_wide <- as.data.frame(all_wide)
+## Models Use, Resistance, DRI 
+
+#P ------
+ModelP <- glm(formula = dec.prop~ RESPONSE+ mean_x0008, weights=tot, data=all_wide[all_wide$DPSIR=="USE",],family=binomial)
+#predP <- data.frame(RESPONSE=all_wide$RESPONSE[all_wide$DPSIR=="USE"], fitted=ModelP$fitted.values)
+#predict(Model)
+newdataP<-expand.grid(RESPONSE=seq(from=min(all_wide$RESPONSE[all_wide$DPSIR=="USE"],na.rm = TRUE),to=max(all_wide$RESPONSE[all_wide$DPSIR=="USE"],na.rm = TRUE),length.out=20),
+                      mean_x0008=mean(all_wide$mean_x0008[all_wide$DPSIR=="USE"],na.rm = TRUE), tot=mean(all_wide$tot[all_wide$DPSIR=="USE"]))
+
+# newdataP<-expand.grid(CODE=seq(from=min(dframe.im$CODE[dframe.im$DPSIR=="PRESSURE"]),to=max(dframe.im$CODE[dframe.im$DPSIR=="PRESSURE"]),length.out=20),
+#                      init.mean=mean(dframe.im$init.mean[dframe.im$DPSIR=="PRESSURE"]),tot=mean(dframe.im$tot[dframe.im$DPSIR=="PRESSURE"]))
+newdataP[,"dec.prop"]<-predict(ModelP,newdataP,se.fit = TRUE,type="response")$fit
+newdataP[,"dec.propmse"]<-newdataP[,"dec.prop"]-predict(ModelP,newdataP,se.fit = TRUE,type="response")$se.fit
+newdataP[,"dec.proppse"]<-newdataP[,"dec.prop"]+predict(ModelP,newdataP,se.fit = TRUE,type="response")$se.fit
+
+# S-------
+ModelS <- glm(formula = dec.prop~ RESPONSE+mean_x0008, weights=tot, data=all_wide[all_wide$DPSIR=="RESISTANCE",],family=binomial)
+# predS <- data.frame(CODE=all_wide$RESPONSE[all_wide$DPSIR=="RESISTANCE"], fitted=ModelS$fitted.values)
+#predict(Model)
+newdataS<-expand.grid(RESPONSE=seq(from=min(all_wide$RESPONSE[all_wide$DPSIR=="RESISTANCE"],na.rm = TRUE),to=max(all_wide$RESPONSE[all_wide$DPSIR=="RESISTANCE"],na.rm = TRUE),length.out=20),
+                      mean_x0008=mean(all_wide$mean_x0008[all_wide$DPSIR=="RESISTANCE"],na.rm = TRUE),tot=mean(all_wide$tot[all_wide$DPSIR=="RESISTANCE"],na.rm = TRUE))
+newdataS[,"dec.prop"]<-predict(ModelS,newdataS,se.fit = TRUE,type="response")$fit
+newdataS[,"dec.propmse"]<-newdataS[,"dec.prop"]-predict(ModelS,newdataS,se.fit = TRUE,type="response")$se.fit
+newdataS[,"dec.proppse"]<-newdataS[,"dec.prop"]+predict(ModelS,newdataS,se.fit = TRUE,type="response")$se.fit
+
+modelI <- glm(formula = dec.prop~ RESPONSE+mean_x0008, weights=tot, 
+              data=all_wide[all_wide$DPSIR=="DRI",],family=binomial)
+#predI <- data.frame(RESPONSE=all_wide$RESPONSE[all_wide$DPSIR=="DRI"], fitted=modelI$fitted.values)
+#predict(Model)
+newdataI<-expand.grid(RESPONSE=seq(from=min(all_wide$RESPONSE[all_wide$DPSIR=="DRI"],na.rm = TRUE),to=max(all_wide$RESPONSE[all_wide$DPSIR=="DRI"],na.rm = TRUE),length.out=20),
+                      mean_x0008=mean(all_wide$mean_x0008[all_wide$DPSIR=="DRI"],na.rm = TRUE),tot=mean(all_wide$tot[all_wide$DPSIR=="DRI"],na.rm = TRUE))
+newdataI[,"dec.prop"]<-predict(modelI,newdataI,se.fit = TRUE,type="response")$fit
+newdataI[,"dec.propmse"]<-newdataI[,"dec.prop"]-predict(modelI,newdataI,se.fit = TRUE,type="response")$se.fit
+newdataI[,"dec.proppse"]<-newdataI[,"dec.prop"]+predict(modelI,newdataI,se.fit = TRUE,type="response")$se.fit
+newdataI[which(newdataI[,"dec.propmse"]<0),"dec.propmse"]<-0
+
+newdataPSI<-rbind.data.frame(newdataP,newdataS)
+newdataPSI<-rbind.data.frame(newdataPSI,newdataI)
+newdataPSI[,"DPSIR"]<-rep(c("USE","RESISTANCE","DRI"),c(nrow(newdataP),nrow(newdataS),nrow(newdataI)))
+
+all_wide<-all_wide[order(all_wide$DPSIR),]
+all_wide[,"tot.alpha"]<-unlist(tapply(all_wide[,"tot"],all_wide[,"DPSIR"],function(x)scales::rescale(x,to=c(min(x),max(x))/max(x))))
+newdataPSI[,"tot.alpha"]<-unlist(tapply(newdataPSI[,"tot"],newdataPSI[,"DPSIR"],function(x)scales::rescale(x,to=c(min(x),max(x))/max(x))))
+
+
+## Model DRIVERS
+
+#### countries that have P,S,I data
+ModelDsub <- glm(formula = dec.prop~ RESPONSE+x0008, weights=tot, data=DRIVERS[DRIVERS$ISO3%in%unique(all_wide$ISO3),],family=binomial)
+#predDsub <- data.frame(CODE=Dmeanc.df$CODE[Dmeanc.df$ISO3%in%unique(dframe.im$ISO3)], fitted=ModelDsub$fitted.values)
+newdataDsub<-expand.grid(RESPONSE=seq(from=min(DRIVERS$RESPONSE[DRIVERS$ISO3%in%unique(all_wide$ISO3)], na.rm = TRUE),
+                                      to=max(DRIVERS$RESPONSE[DRIVERS$ISO3%in%unique(all_wide$ISO3)], na.rm = TRUE),length.out=20),
+                         x0008=mean(DRIVERS$x0008[DRIVERS$ISO3%in%unique(all_wide$ISO3)], na.rm = TRUE),
+                         tot=mean(DRIVERS$tot[DRIVERS$ISO3%in%unique(all_wide$ISO3)], na.rm = TRUE))
+newdataDsub[,"dec.prop"]<-predict(ModelDsub,newdataDsub,se.fit = TRUE,type="response")$fit
+newdataDsub[,"dec.propmse"]<-newdataDsub[,"dec.prop"]-predict(ModelDsub,newdataDsub,se.fit = TRUE,type="response")$se.fit
+newdataDsub[,"dec.proppse"]<-newdataDsub[,"dec.prop"]+predict(ModelDsub,newdataDsub,se.fit = TRUE,type="response")$se.fit
+
+newdataDsub[,"DPSIR"]<-"DRIVERS"
+colnames(newdataDsub)[2] <-"mean_x0008"
+newdataDsub[,"tot.alpha"]<-unlist(tapply(newdataDsub[,"tot"],newdataDsub[,"DPSIR"],function(x)scales::rescale(x,to=c(min(x),max(x))/max(x))))
+
+newdataDPSI<-rbind.data.frame(newdataPSI,newdataDsub)
+legend_title <- "DPSE"
+
+# Plot
+gg.deratDPSI<-ggplot() + 
+  #geom_point(data=all_wide,aes(alpha=tot.alpha,colour=factor(DPSIR,levels=c("USE","RESISTANCE","DRI")))) +
+  geom_ribbon(data=newdataDPSI,aes(x=RESPONSE, ymin=dec.propmse,ymax=dec.proppse,fill=factor(DPSIR,levels=c("DRIVERS","USE","RESISTANCE","DRI"))), lwd=0.75,alpha=0.5)+
+  geom_line(data=newdataDPSI,aes(RESPONSE, dec.prop,colour=factor(DPSIR,levels=c("DRIVERS","USE","RESISTANCE","DRI"))), lwd=1.2)+
+  geom_point(data=DRIVERS[DRIVERS$ISO3%in%unique(all_wide$ISO3),],aes(x=RESPONSE, y=dec.prop,alpha=tot.alpha,colour=factor(DPSIR,levels=c("DRIVERS","USE","RESISTANCE","DRI")))) +
+  geom_point(data=all_wide,aes(x=RESPONSE, y=dec.prop,alpha=tot.alpha,colour=factor(DPSIR,levels=c("DRIVERS","USE","RESISTANCE","DRI")))) +
+  #geom_line(data=newdataDPSI,aes(RESPONSE, dec.propmse,colour=factor(DPSIR,levels=c("USE","RESISTANCE","DRI"))), lwd=0.75,alpha=0.8)+
+  #geom_line(data=newdataDPSI,aes(RESPONSE, dec.proppse,colour=factor(DPSIR,levels=c("USE","RESISTANCE","DRI"))), lwd=0.75,alpha=0.8)+
+  #geom_line(data=pred,aes(RESPONSE, fitted), col='green', lwd=1.2)+
+  ylim(0,1)+xlim(0,4)+xlab("Stated action")+ylab("De-escalating ratio")+
+  theme_bw()+
+  scale_color_manual(legend_title, values=scales::brewer_pal(palette="Set1")(5)[c(2,4,5,1)])+
+  scale_fill_manual(legend_title,values=scales::brewer_pal(palette="Set1")(5)[c(2,4,5,1)])+
+  labs(alpha = "Weight",color = "DPSIR",fill="DPSIR")+
+  theme(legend.position = c(0.11, 0.3),legend.background = element_rect(fill = NA),
+        legend.key = element_rect(fill = NA, color = NA)) 
+
+pdf("plots/Deescalating_ratio_DPSI.pdf", width=6, height=6)
+gg.deratDPSI
+dev.off()
+ 
+# REPORTING---------
+summary(ModelDsub)
+### trying back transform
+require(emmeans)
+ModelDsub_RES <- emmeans(ModelDsub, "RESPONSE", type = "response")
+pairs(ModelDsub_RES, reverse = TRUE)
+
+# inv.logit(x = -0.2194)
+# # 0.445369
+# exp(-0.2194)
+# # 0.8030005
+# plogis(coef(ModelDsub))
+#0.445370
+#### go with exponential because we want Odds Ratios instead of transforming SEs # https://stats.stackexchange.com/questions/355408/why-does-glm-provide-estimates-and-standard-errors-on-the-link-scale
+sjPlot::tab_model(ModelDsub)
+ 
+#end
+# for sample size check the df (73)
+#DRIVERS[DRIVERS$ISO3 %in% unique(all_wide$ISO3), ] 
+summary(ModelP)
+# all_wide[all_wide$DPSIR == "USE", ] --> 65
+sjPlot::tab_model(ModelP)
+
+
+summary(ModelS)
+sjPlot::tab_model(ModelS)
+# all_wide[all_wide$DPSIR == "RESISTANCE", ] %>% select(c(dec.prop)) %>% drop_na() %>% nrow()
+
+summary(modelI)
+sjPlot::tab_model(modelI)
+
+# all_wide[all_wide$DPSIR == "DRI", ] %>% select(c(dec.prop)) %>% drop_na() %>% nrow()
+
+# big model for reporting--------
+model_driv_data <- DRIVERS[DRIVERS$ISO3%in%unique(all_wide$ISO3),]
+model_driv_data2 <- model_driv_data %>% select(c("ISO3",
+                                                 "DPSIR",
+                                                 "RESPONSE",
+                                                 "dec",
+                                                 "tot",
+                                                 "dec.prop", 
+                                                 "x0008",
+                                                 "tot.alpha"))
+colnames(model_driv_data2)[7] <- "mean_x0008"
+all_wide2 <- all_wide %>% select(c("ISO3",
+                                                 "DPSIR",
+                                                 "RESPONSE",
+                                                 "dec",
+                                                 "tot",
+                                                 "dec.prop", 
+                                                 "mean_x0008",
+                                                 "tot.alpha"))
+big_data <- rbind(all_wide2, model_driv_data2 )
+big_data$DPSIR <- factor(x = big_data$DPSIR, levels = c("DRIVERS", "USE", "RESISTANCE", "DRI"))
+big_model_int <- glm(formula = dec.prop ~ RESPONSE*DPSIR + mean_x0008, family = binomial, 
+    data = big_data, weights = tot)
+sjPlot::tab_model(big_model_int)
+
+# do a comparison between interactive and additive models
+big_model_add <- glm(formula = dec.prop ~ RESPONSE + DPSIR + mean_x0008, family = binomial, 
+    data = big_data, weights = tot)
+
+big_model_noDPSIR <- glm(formula = dec.prop ~ RESPONSE + mean_x0008, family = binomial, 
+    data = big_data, weights = tot)
+
+big_model_noDPSIRRes <- glm(formula = dec.prop ~ mean_x0008, family = binomial, 
+    data = big_data, weights = tot)
+#anova(big_model, big_model_add, test = "F") this is not appropriate
+# S25 Table
+library(AICcmodavg)
+big_mod_names <- c("big_model_int","big_model_add", "big_model_noDPSIR", "big_model_noDPSIRRes" )
+big_mod_list <- list(big_model_int,big_model_add, big_model_noDPSIR, big_model_noDPSIRRes )
+
+aictab(modnames = big_mod_names, cand.set = big_mod_list , second.ord = T)
+
+```
+
+# Other results
+
+```{r child-document2, child='2.1s.Variation_in_linear_and_categorical_trends.Rmd', echo=FALSE}
+
+```
+
+
+```{r child-document3, child='2.2s.ActionCategories.Rmd', echo=FALSE}
+
+```

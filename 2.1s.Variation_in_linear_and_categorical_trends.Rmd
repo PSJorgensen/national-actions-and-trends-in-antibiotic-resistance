@@ -1,0 +1,757 @@
+---
+title: "Variation in Linear and Categorical Trends"
+author: "Ege Pehlivanoglu"
+date: " Last Edited `r format(Sys.time(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    code_folding: show
+    theme: lumen
+    highlight: pygments
+editor_options: 
+  chunk_output_type: inline
+---
+
+```{r setup for current Rmd, message=FALSE, include=FALSE}
+knitr::opts_chunk$set(
+	echo = FALSE,
+	message = FALSE,
+	warning = FALSE
+)
+
+pacman::p_load("readr",
+               "tidyverse",
+               "gt",
+               "lmerTest",
+               "afex",
+               "broom",
+               "rstatix",
+               "here")
+
+load(here("0.data", "dpsir_clean_x0008_countriesfiltered241207.RData"))
+# define the common selection columns to remove NAs, if columns has NAs rows will be excluded from the analysis
+common_columns <- c("ISO3","income","SHORTNAME","DPSIR","x0008","x0816","change","sign","RESPONSE")
+#NOTE THAT here Response is excluded, the change in DPSIR indicators are not depending on response
+#Change the variable names
+var_name_changes <- c(driverTot = "Drivers Total",
+                  useTot = "Use Total",
+                  resTot = "Resistance Total",
+                  infTot = "Infections", 
+                  sanTot = "Sanitation", 
+                  vacTot = "Vaccination",
+                  workTot = "Workforce",
+                  drinking_water = "Drinking Water Source",
+                  water_source = "Water Source Access",
+                  overall_san = "Overall Sanitation",
+                  totDDD ="TotalDDDPer1000Persons",
+                  Broad ="BroadPerTotalABXUse")
+```
+
+# Variation in DPSE indicators {.tabset .tabset-fade}
+
+## A. Variation in Linear Trend
+
+```{r variation in change}
+change_var <- function(dpsir_final_subset) {
+  # DRIVER -------------------------------------------------
+  driverTot <- dpsir_final %>%
+    filter(DPSIR == "DRIVERS" & SHORTNAME == "driverTotal") %>%
+    select(all_of(common_columns)) %>%
+    unique() %>%
+    na.omit()
+  driverTot_con_mod <- lm(change ~ 1, data = driverTot)
+  driverTot_con_mod_sum <- summary(driverTot_con_mod)
+
+  # level 2
+  ## infTotal
+  infTot <- dpsir_final %>%
+    filter(SHORTNAME == "infTotal") %>%
+    select(all_of(common_columns)) %>%
+    unique() %>%
+    na.omit()
+  infTot_con_mod <- lm(change ~ 1, data = infTot)
+  infTot_con_mod_sum <- summary(infTot_con_mod)
+
+  ## sanTotal
+  sanTot <- dpsir_final %>%
+    filter(SHORTNAME == "sanTotal") %>%
+    select(all_of(common_columns)) %>%
+    unique() %>%
+    na.omit()
+  sanTot_con_mod <- lm(change ~ 1, data = sanTot)
+  sanTot_con_mod_sum <- summary(sanTot_con_mod)
+
+  ## vacTotal
+  vacTot <- dpsir_final %>%
+    filter(SHORTNAME == "vacTotal") %>%
+    select(all_of(common_columns)) %>%
+    unique() %>%
+    na.omit()
+  vacTot_con_mod <- lm(change ~ 1, data = vacTot)
+  vacTot_con_mod_sum <- summary(vacTot_con_mod)
+
+  ## workTotal
+  workTot <- dpsir_final %>%
+    filter(SHORTNAME == "workTotal") %>%
+    select(all_of(common_columns)) %>%
+    unique() %>%
+    na.omit()
+  workTot_con_mod <- lm(change ~ 1, data = workTot)
+  workTot_con_mod_sum <- summary(workTot_con_mod)
+
+  ## HIV
+  HIV <- dpsir_final %>%
+    filter(DPSIR == "DRIVERS" & SHORTNAME == "HIV") %>%
+    select(all_of(common_columns)) %>%
+    unique() %>%
+    na.omit()
+  HIV_con_mod <- lm(change ~ 1, data = HIV)
+  HIV_con_mod_sum <- summary(HIV_con_mod)
+
+  ## TB
+  TB <- dpsir_final %>%
+    filter(DPSIR == "DRIVERS" & SHORTNAME == "TB") %>%
+    select(all_of(common_columns)) %>%
+    unique() %>%
+    na.omit()
+  TB_con_mod <- lm(change ~ 1, data = TB)
+  TB_con_mod_sum <- summary(TB_con_mod)
+
+  ## drinking_water
+  drinking_water <- dpsir_final %>%
+    filter(DPSIR == "DRIVERS" & SHORTNAME == "Drinking Water Source") %>%
+    select(all_of(common_columns)) %>%
+    unique() %>%
+    na.omit()
+  drinking_water_con_mod <- lm(change ~ 1, data = drinking_water)
+  drinking_water_con_mod_sum <- summary(drinking_water_con_mod)
+
+  ## water_source
+  water_source <- dpsir_final %>%
+    filter(DPSIR == "DRIVERS" & SHORTNAME == "Water Source Access") %>%
+    select(all_of(common_columns)) %>%
+    unique() %>%
+    na.omit()
+  water_source_con_mod <- lm(change ~ 1, data = water_source)
+  water_source_con_mod_sum <- summary(water_source_con_mod)
+
+  ## overall_san
+  overall_san <- dpsir_final %>%
+    filter(DPSIR == "DRIVERS" & SHORTNAME == "Overall Sanitation") %>%
+    select(all_of(common_columns)) %>%
+    unique() %>%
+    na.omit()
+  overall_san_con_mod <- lm(change ~ 1, data = overall_san)
+  overall_san_con_mod_sum <- summary(overall_san_con_mod)
+
+  ### other level3
+  # DTP3
+  DTP3 <- dpsir_final %>%
+    filter(DPSIR == "DRIVERS" & SHORTNAME == "DTP3") %>%
+    select(all_of(common_columns)) %>%
+    unique() %>%
+    na.omit()
+  DTP3_con_mod <- lm(change ~ 1, data = DTP3)
+  DTP3_con_mod_sum <- summary(DTP3_con_mod)
+
+  # HepB3
+  HepB3 <- dpsir_final %>%
+    filter(DPSIR == "DRIVERS" & SHORTNAME == "HepB3") %>%
+    select(all_of(common_columns)) %>%
+    unique() %>%
+    na.omit()
+  HepB3_con_mod <- lm(change ~ 1, data = HepB3)
+  HepB3_con_mod_sum <- summary(HepB3_con_mod)
+
+  # Hib3
+  Hib3 <- dpsir_final %>%
+    filter(DPSIR == "DRIVERS" & SHORTNAME == "Hib3") %>%
+    select(all_of(common_columns)) %>%
+    unique() %>%
+    na.omit()
+  Hib3_con_mod <- lm(change ~ 1, data = Hib3)
+  Hib3_con_mod_sum <- summary(Hib3_con_mod)
+
+  # Pol3
+  Pol3 <- dpsir_final %>%
+    filter(DPSIR == "DRIVERS" & SHORTNAME == "Pol3") %>%
+    select(all_of(common_columns)) %>%
+    unique() %>%
+    na.omit()
+  Pol3_con_mod <- lm(change ~ 1, data = Pol3)
+  Pol3_con_mod_sum <- summary(Pol3_con_mod)
+
+  # Measles
+  Measles <- dpsir_final %>%
+    filter(DPSIR == "DRIVERS" & SHORTNAME == "Measles") %>%
+    select(all_of(common_columns)) %>%
+    unique() %>%
+    na.omit()
+  Measles_con_mod <- lm(change ~ 1, data = Measles)
+  Measles_con_mod_sum <- summary(Measles_con_mod)
+
+  # RCV1
+  RCV1 <- dpsir_final %>%
+    filter(DPSIR == "DRIVERS" & SHORTNAME == "RCV1") %>%
+    select(all_of(common_columns)) %>%
+    unique() %>%
+    na.omit()
+  RCV1_con_mod <- lm(change ~ 1, data = RCV1)
+  RCV1_con_mod_sum <- summary(RCV1_con_mod)
+
+  # Nursing
+  Nursing <- dpsir_final %>%
+    filter(DPSIR == "DRIVERS" & SHORTNAME == "Nursing & midwifery") %>%
+    select(all_of(common_columns)) %>%
+    unique() %>%
+    na.omit()
+  Nursing_con_mod <- lm(change ~ 1, data = Nursing)
+  Nursing_con_mod_sum <- summary(Nursing_con_mod)
+
+  
+  ## Physicians
+  Physicians <- dpsir_final %>%
+    filter(DPSIR == "DRIVERS" & SHORTNAME == "Physicians") %>%
+    select(all_of(common_columns)) %>%
+    unique() %>%
+    na.omit()
+  Physicians_con_mod <- lm(change ~ 1, data = Physicians)
+  Physicians_con_mod_sum <- summary(Physicians_con_mod)
+
+  # USE -------------------------------------------------
+  useTot <- dpsir_final %>%
+    filter(DPSIR == "USE") %>%
+    filter(SHORTNAME == "useTotal") %>%
+    select(all_of(common_columns)) %>%
+    unique() %>%
+    na.omit()
+  useTot_con_mod <- lm(change ~ 1, data = useTot)
+  useTot_con_mod_sum <- summary(useTot_con_mod)
+
+  # level 2
+  ## total per capita use --> TotalDDDPer1000Persons
+  totDDD <- dpsir_final %>%
+    filter(DPSIR == "USE" & SHORTNAME == "TotalDDDPer1000Persons") %>%
+    select(all_of(common_columns)) %>%
+    unique() %>%
+    na.omit()
+  totDDD_con_mod <- lm(change ~ 1, data = totDDD)
+  totDDD_con_mod_sum <- summary(totDDD_con_mod)
+
+  ## use of broad spectrum antibiotics  --> BroadPerTotalABXUse
+  Broad <- dpsir_final %>%
+    filter(DPSIR == "USE" & SHORTNAME == "BroadPerTotalABXUse") %>%
+    select(all_of(common_columns)) %>%
+    unique() %>%
+    na.omit()
+  Broad_con_mod <- lm(change ~ 1, data = Broad)
+  Broad_con_mod_sum <- summary(Broad_con_mod)
+
+  ## newly available antibiotics NewABXUse
+  NewABXUse <- dpsir_final %>%
+    filter(DPSIR == "USE" & SHORTNAME == "NewABXUse") %>%
+    select(all_of(common_columns)) %>%
+    unique() %>%
+    na.omit()
+  NewABXUse_con_mod <- lm(change ~ 1, data = NewABXUse)
+  NewABXUse_con_mod_sum <- summary(NewABXUse_con_mod)
+
+  ##### RESISTANCE-------------------------------
+
+  ## ABR total
+  resTot <- dpsir_final %>%
+    filter(DPSIR == "RESISTANCE" & SHORTNAME == "resTotal") %>%
+    select(c("ISO3", "SHORTNAME", "DPSIR", "change", "income", "sign", "RESPONSE")) %>%
+    unique() %>%
+    na.omit()
+  resTot_con_mod <- lm(change ~ 1, data = resTot)
+  resTot_con_mod_sum <- summary(resTot_con_mod)
+
+  ## with levels of MRSA declining 
+  MRSA <- dpsir_final %>%
+    filter(DPSIR == "RESISTANCE" & SHORTNAME == "MRSA") %>%
+    select(c("ISO3", "SHORTNAME", "DPSIR", "change", "income", "sign", "RESPONSE")) %>%
+    unique() %>%
+    na.omit() # 21 of 32 countries has declining values of MRSA but not significant decrease
+  MRSA_con_mod <- lm(change ~ 1, data = MRSA)
+  MRSA_con_mod_sum <- summary(MRSA_con_mod)
+
+  ## while emerging types of resistance to last-resort carbapenems in Enterobacteriaceae increased 
+  CR <- dpsir_final %>%
+    filter(DPSIR == "RESISTANCE" & SHORTNAME == "CR") %>%
+    select(c("ISO3", "SHORTNAME", "DPSIR", "change", "income", "sign", "RESPONSE")) %>%
+    unique() %>%
+    na.omit()
+  CR_con_mod <- lm(change ~ 1, data = CR)
+  CR_con_mod_sum <- summary(CR_con_mod)
+
+  ## STR
+  STR <- dpsir_final %>%
+    filter(DPSIR == "RESISTANCE" & SHORTNAME == "STR") %>%
+    select(c("ISO3", "SHORTNAME", "DPSIR", "change", "income", "sign", "RESPONSE")) %>%
+    unique() %>%
+    na.omit()
+  STR_con_mod <- lm(change ~ 1, data = STR)
+  STR_con_mod_sum <- summary(STR_con_mod)
+
+  ## DRI--------------------------
+  DRI <- dpsir_final %>%
+    filter(DPSIR == "DRI") %>%
+    select(c("ISO3", "SHORTNAME", "DPSIR", "change", "income", "sign", "RESPONSE")) %>%
+    unique() %>%
+    na.omit()
+  DRI_con_mod <- lm(change ~ 1, data = DRI)
+  DRI_con_mod_sum <- summary(DRI_con_mod)
+
+  # Save model summaries as a list
+lm_mod_sum_list <- list(
+  driverTot_con_mod_sum = driverTot_con_mod_sum,
+  infTot_con_mod_sum = infTot_con_mod_sum,
+  sanTot_con_mod_sum = sanTot_con_mod_sum,
+  vacTot_con_mod_sum = vacTot_con_mod_sum,
+  workTot_con_mod_sum = workTot_con_mod_sum,
+  HIV_con_mod_sum = HIV_con_mod_sum,
+  TB_con_mod_sum = TB_con_mod_sum,
+  drinking_water_con_mod_sum = drinking_water_con_mod_sum,
+  water_source_con_mod_sum = water_source_con_mod_sum,
+  overall_san_con_mod_sum = overall_san_con_mod_sum,
+  DTP3_con_mod_sum = DTP3_con_mod_sum,
+  HepB3_con_mod_sum = HepB3_con_mod_sum,
+  Hib3_con_mod_sum = Hib3_con_mod_sum,
+  Pol3_con_mod_sum = Pol3_con_mod_sum,
+  Measles_con_mod_sum = Measles_con_mod_sum,
+  RCV1_con_mod_sum = RCV1_con_mod_sum,
+  Nursing_con_mod_sum = Nursing_con_mod_sum,
+  Physicians_con_mod_sum = Physicians_con_mod_sum,
+  useTot_con_mod_sum = useTot_con_mod_sum,
+  totDDD_con_mod_sum = totDDD_con_mod_sum,
+  Broad_con_mod_sum = Broad_con_mod_sum,
+  NewABXUse_con_mod_sum = NewABXUse_con_mod_sum,
+  resTot_con_mod_sum = resTot_con_mod_sum,
+  MRSA_con_mod_sum = MRSA_con_mod_sum,
+  CR_con_mod_sum = CR_con_mod_sum,
+  STR_con_mod_sum = STR_con_mod_sum,
+  DRI_con_mod_sum = DRI_con_mod_sum
+)
+  # save mod datas as a list
+mod_data_list <- list(driverTot = driverTot,
+                        infTot = infTot,
+                        sanTot = sanTot,
+                        vacTot = vacTot,
+                        workTot = workTot,
+                        HIV = HIV,
+                        TB = TB,
+                        drinking_water = drinking_water,
+                        water_source = water_source,
+                        overall_san = overall_san,
+                        DTP3 = DTP3,
+                        HepB3 = HepB3,
+                        Hib3 = Hib3,
+                        Pol3 = Pol3,
+                        Measles = Measles,
+                        RCV1 = RCV1,
+                        Nursing = Nursing,
+                        Physicians = Physicians,
+                        useTot = useTot,
+                        totDDD = totDDD,
+                        Broad = Broad,
+                        NewABXUse = NewABXUse,
+                        resTot = resTot,
+                        MRSA = MRSA,
+                        CR = CR,
+                        STR = STR,
+                        DRI = DRI)
+
+  lm_result <- list(lm_mod_sum_list = lm_mod_sum_list, mod_data_list = mod_data_list)
+  return(lm_result)
+}
+
+change_var_result <- change_var(dpsir_final)
+lm_mod_data <- change_var_result[[2]]
+lm_mod_sum_l <- change_var_result["lm_mod_sum_list"][[1]]
+df_list <- lapply(change_var_result[[1]], broom.mixed::tidy)
+
+# Combine the dataframes into a single dataframe
+combined_df <- do.call(rbind, df_list)
+combined_df$model_names <- row.names(combined_df)
+# # add df
+for (i in 1:length(lm_mod_sum_l)) {
+  combined_df$df[i] <- lm_mod_sum_l[[i]]$df[[2]]
+}
+
+combined_df$variable <- strsplit(combined_df$model_names, "_con_mod_sum")
+combined_df <- combined_df %>%
+  select(-c("term", "model_names")) %>%
+  mutate(levels = case_when(
+    variable %in% c("driverTot", "useTot", "resTot", "DRI") ~ "level 1",
+    variable %in% c("totDDD", "Broad", "NewABXUse", "MRSA", "STR", "CR", "workTot", "sanTot", "vacTot", "infTot") ~ "level 2",
+    variable %in% c("HIV", "TB", "drinking_water", "water_source", "overall_san") ~ "level 3",
+    variable %in% c("DTP3", "HepB3", "Hib3", "Pol3", "Measles", "RCV1") ~ "level 3",
+    variable %in% c("Nursing", "Physicians") ~ "level 3")) %>%
+  mutate(DPSIR = case_when(
+    variable %in% c("driverTot", "workTot", "sanTot", "vacTot", "infTot") ~ "Drivers",
+    variable %in% c("useTot", "totDDD", "Broad", "NewABXUse") ~ "Use",
+    variable %in% c("resTot", "MRSA", "STR", "CR") ~ "Resistance",
+    variable %in% c("DRI") ~ "DRI",
+    ##level 3
+    variable %in% c("HIV", "TB") ~ "Drivers/inf",
+    variable %in% c("drinking_water", "water_source", "overall_san") ~ "Drivers/san",
+    variable %in% c("DTP3", "HepB3", "Hib3", "Pol3", "Measles", "RCV1") ~ "Drivers/vac",
+    variable %in% c("Nursing", "Physicians") ~ "Drivers/Work")) %>%
+  rename("t-value" = "statistic",
+         "mean" = "estimate") %>%
+  select("variable", "DPSIR", "levels", "mean", "t-value", "std.error", "df", "p.value")
+
+# Replace the variable names
+combined_df$variable <- as.character(combined_df$variable)
+combined_df$variable <- plyr::mapvalues(combined_df$variable, from = names(var_name_changes), to = var_name_changes)
+combined_df$levels<- as.factor(combined_df$levels)
+
+# fix the p values
+# thanks to https://www.r-bloggers.com/2016/03/correctly-reporting-p-values-in-summary-tables-reported-with-xtable/
+fixp <- function(x, dig = 3) {
+  x <- as.data.frame(x)
+  x[, ncol(x)] <- round(x[, ncol(x)], dig)
+  for (i in 1:nrow(x)) {
+    if (x[i, ncol(x)] == 0)
+      x[i, ncol(x)] <- paste0("< .", paste0(rep(0, dig - 1), collapse = ""), "1")
+  }
+  x
+}
+combined_df <- fixp(combined_df)
+# Arrange the levels in a specific order
+level_order <- c("level 1", "level 2", "level 3")
+combined_df <- format(combined_df, digits = 2)
+
+# add number of observations
+# use lm_mod_data list
+for (i in 1:length(lm_mod_data)) {
+  # Extract npos and nobs
+  lm_mod_data[[i]]$new <- lm_mod_data[[i]] %>% mutate(obs = nrow(lm_mod_data[[i]])) %>%
+    group_by(sign) %>%
+    reframe(n_pos = n(), obs = obs) %>% distinct() %>%
+    filter(sign == "+") %>% ungroup() %>% select(-sign)
+}
+
+for (i in 1:length(lm_mod_data)) {
+  combined_df$sample_size[i] <- lm_mod_data[[i]]$new$obs
+}
+
+degree_of_change_tbl <- combined_df %>%
+  mutate(p.value = str_replace(p.value, "<0.001", "\\( < 0.001 \\)")) %>% #this is for latex formatting
+  arrange(factor(levels, levels = level_order)) %>%
+  group_by(levels) %>%
+  gt() %>%
+  cols_label(DPSIR = "DPSEA",
+             sample_size = "Sample Size")
+
+degree_of_change_tbl <- degree_of_change_tbl %>% tab_options(
+  table.font.size = px(11),
+  data_row.padding = px(3),
+  heading.align = 'left',
+  #      column_labels.background.color = 'dodgerblue4',
+  heading.title.font.size = px(14),
+  heading.subtitle.font.size = px(12),
+  table_body.hlines.width = px(0)
+) |>
+  tab_style(
+    style = list(cell_text(weight = "bold")),
+    locations = cells_body(columns = "p.value", rows = p.value < 0.05)
+  ) %>%
+  tab_header(
+    title = md("**Variation in Degree of Change For DPSE Indicators**"),
+    subtitle = md("T-test Statistics")
+  ) %>%
+  tab_footnote(
+    footnote = md("lm(Linear Trend ~ 1)")
+  )
+
+# Print the gt table
+degree_of_change_tbl
+
+gtsave(degree_of_change_tbl, file = "degree_of_change_in_text.html", path = here("results"))
+```
+
+## B. Variation in Categorical Trend
+
+```{r variation in sign of change}
+sign_var <- function(dpsir_final_subset){
+  #DRIVER-------------------------------------------------
+  driverTot <- dpsir_final %>% filter(DPSIR=="DRIVERS")  %>% filter(SHORTNAME=="driverTotal") %>% select(all_of(common_columns)) %>% unique() %>% na.omit()
+  driverTot_bin_mod <- glm(factor(sign) ~ 1, data = driverTot, family = binomial) # binomial
+  driverTot_bin_mod_sum <-summary(driverTot_bin_mod)
+  # level 2
+## infTotal 
+  infTot <- dpsir_final %>% filter(DPSIR=="DRIVERS")  %>% filter(SHORTNAME=="infTotal") %>% select(all_of(common_columns)) %>% unique() %>% na.omit()
+  infTot_bin_mod <- glm(factor(sign) ~ 1, data = infTot, family = binomial) # binomial
+  infTot_bin_mod_sum <-summary(infTot_bin_mod)
+## sanTotal 
+  sanTot <- dpsir_final %>% filter(DPSIR=="DRIVERS")  %>% filter(SHORTNAME=="sanTotal") %>% select(all_of(common_columns)) %>% unique() %>% na.omit()
+  sanTot_bin_mod<- glm(factor(sign) ~ 1, data = sanTot, family = binomial) # binomial
+  sanTot_bin_mod_sum <-summary(sanTot_bin_mod)
+## vacTotal 
+  vacTot <- dpsir_final %>% filter(DPSIR=="DRIVERS")  %>% filter(SHORTNAME=="vacTotal") %>% select(all_of(common_columns)) %>% unique() %>% na.omit()
+  vacTot_bin_mod <- glm(factor(sign) ~ 1, data = vacTot, family = binomial) # binomial
+  vacTot_bin_mod_sum <-summary(vacTot_bin_mod)
+## workTotal 
+  workTot <- dpsir_final %>% filter(DPSIR=="DRIVERS")  %>% filter(SHORTNAME=="workTotal") %>% select(all_of(common_columns)) %>% unique() %>% na.omit()
+  workTot_bin_mod <- glm(factor(sign) ~ 1, data = workTot, family = binomial) # binomial
+  workTot_bin_mod_sum <-summary(workTot_bin_mod)
+
+    ## HIV
+  HIV <- dpsir_final %>% filter(DPSIR=="DRIVERS" & SHORTNAME=="HIV") %>% select(all_of(common_columns)) %>% unique() %>% na.omit()
+  HIV_bin_mod <- glm(factor(sign) ~ 1, data = HIV, family = binomial)
+  HIV_bin_mod_sum <- summary(HIV_bin_mod) 
+
+  ## TB
+  TB <- dpsir_final %>% filter(DPSIR=="DRIVERS" & SHORTNAME=="TB") %>% select(all_of(common_columns)) %>% unique() %>% na.omit()
+  TB_bin_mod <- glm(factor(sign) ~ 1, data = TB, family = binomial)
+  TB_bin_mod_sum <- summary(TB_bin_mod) 
+
+  ## drinking_water
+  drinking_water <- dpsir_final %>% filter(DPSIR=="DRIVERS" & SHORTNAME=="Drinking Water Source") %>% select(all_of(common_columns)) %>% unique() %>% na.omit()
+  drinking_water_bin_mod <- glm(factor(sign) ~ 1, data = drinking_water, family = binomial)
+  drinking_water_bin_mod_sum <- summary(drinking_water_bin_mod) 
+
+  ## water_source
+  water_source <- dpsir_final %>% filter(DPSIR=="DRIVERS" & SHORTNAME== "Water Source Access") %>% select(all_of(common_columns)) %>% unique() %>% na.omit()
+  water_source_bin_mod <- glm(factor(sign) ~ 1, data = water_source, family = binomial)
+  water_source_bin_mod_sum <- summary(water_source_bin_mod)
+
+  ## overall_san
+  overall_san <- dpsir_final %>% filter(DPSIR=="DRIVERS" & SHORTNAME== "Overall Sanitation") %>% select(all_of(common_columns)) %>% unique() %>% na.omit()
+  overall_san_bin_mod <- glm(as.factor(factor(sign)) ~ 1, data = overall_san, family = binomial)
+  overall_san_bin_mod_sum <- summary(overall_san_bin_mod)  
+
+### other level3 
+#DTP3
+ DTP3 <- dpsir_final %>% filter(DPSIR=="DRIVERS" & SHORTNAME== "DTP3") %>% select(all_of(common_columns)) %>% unique() %>% na.omit()
+DTP3_bin_mod <-  glm(factor(sign) ~ 1, data = DTP3, family = binomial)
+DTP3_bin_mod_sum <- summary(DTP3_bin_mod) # binomial
+
+# HepB3
+HepB3 <- dpsir_final %>% filter(DPSIR=="DRIVERS" & SHORTNAME== "HepB3") %>% select(all_of(common_columns)) %>% unique() %>% na.omit()
+HepB3_bin_mod <-  glm(factor(sign) ~ 1, data = HepB3, family = binomial)
+HepB3_bin_mod_sum <- summary(HepB3_bin_mod) 
+
+# Hib3
+Hib3 <- dpsir_final %>% filter(DPSIR=="DRIVERS" & SHORTNAME== "Hib3") %>% select(all_of(common_columns)) %>% unique() %>% na.omit()
+Hib3_bin_mod <-  glm(factor(sign) ~ 1, data = Hib3, family = binomial)
+Hib3_bin_mod_sum <- summary(Hib3_bin_mod) 
+
+# PCV3
+## NOTE! change is empty thus excluded
+# PCV3 <- dpsir_final %>% filter(DPSIR=="DRIVERS" & SHORTNAME== "PCV3") %>% select(c("ISO3", "SHORTNAME","DPSIR","x0008","x0816","change","income","sign")) %>% unique() %>% na.omit()
+# PCV3_bin_mod <-  glm(factor(sign) ~ 1, data = PCV3, family = binomial)
+# PCV3_bin_mod_sum <- summary(PCV3_bin_mod) 
+# #PCV3 %>% summary() #111/147
+
+# Pol3
+Pol3 <- dpsir_final %>% filter(DPSIR=="DRIVERS" & SHORTNAME== "Pol3") %>% select(all_of(common_columns)) %>% unique() %>% na.omit()
+Pol3_bin_mod <-  glm(factor(sign) ~ 1, data = Pol3, family = binomial)
+Pol3_bin_mod_sum <- summary(Pol3_bin_mod) 
+
+# Measles
+Measles <- dpsir_final %>% filter(DPSIR=="DRIVERS" & SHORTNAME== "Measles") %>% select(all_of(common_columns)) %>% unique() %>% na.omit()
+Measles_bin_mod <-  glm(factor(sign) ~ 1, data = Measles, family = binomial)
+Measles_bin_mod_sum <- summary(Measles_bin_mod) 
+
+# RCV1
+RCV1 <- dpsir_final %>% filter(DPSIR=="DRIVERS" & SHORTNAME== "RCV1") %>% select(all_of(common_columns)) %>% unique() %>% na.omit()
+RCV1_bin_mod <-  glm(factor(sign) ~ 1, data = RCV1, family = binomial)
+RCV1_bin_mod_sum <- summary(RCV1_bin_mod) 
+
+# Nursing
+Nursing <- dpsir_final %>% filter(DPSIR=="DRIVERS" & SHORTNAME== "Nursing & midwifery") %>% select(all_of(common_columns)) %>% unique() %>% na.omit()
+Nursing_bin_mod <-  glm(factor(sign) ~ 1, data = Nursing, family = binomial)
+Nursing_bin_mod_sum <- summary(Nursing_bin_mod) 
+
+# Physicians
+Physicians <- dpsir_final %>% filter(DPSIR=="DRIVERS" & SHORTNAME== "Physicians") %>% select(all_of(common_columns)) %>% unique() %>% na.omit()
+Physicians_bin_mod <-  glm(factor(sign) ~ 1, data = Physicians, family = binomial)
+Physicians_bin_mod_sum <- summary(Physicians_bin_mod) 
+
+  # USE-------------------------------------------------
+  useTot <- dpsir_final %>% filter(DPSIR=="USE")  %>% filter(SHORTNAME=="useTotal") %>% select(all_of(common_columns)) %>% unique() %>% na.omit()
+  useTot_bin_mod <- glm(factor(sign) ~ 1, data = useTot, family = binomial)  
+  useTot_bin_mod_sum <-summary(useTot_bin_mod)
+
+  # level 2
+  ## total per capita use --> TotalDDDPer1000Persons 50/65
+  totDDD <- dpsir_final %>% filter(DPSIR=="USE" & SHORTNAME=="TotalDDDPer1000Persons") %>% select(all_of(common_columns)) %>% unique() %>% na.omit()
+  totDDD_bin_mod <- glm(factor(sign) ~ 1, data = totDDD, family = binomial)
+  totDDD_bin_mod_sum <- summary(totDDD_bin_mod)  
+
+  ## use of broad spectrum antibiotics  --> BroadPerTotalABXUse
+  Broad<- dpsir_final %>% filter(DPSIR=="USE" & SHORTNAME=="BroadPerTotalABXUse") %>% select(all_of(common_columns)) %>% unique() %>% na.omit()
+  Broad_bin_mod <- glm(factor(sign) ~ 1, data = Broad, family = binomial)
+  Broad_bin_mod_sum <- summary(Broad_bin_mod)  
+
+  ## newly available antibiotics (mean=0.31 SD, P<0.001, 55/63, P<0.001, Fig S0c-d). --> NewABXUse
+  NewABXUse <- dpsir_final %>% filter(DPSIR=="USE" & SHORTNAME=="NewABXUse") %>% select(all_of(common_columns)) %>% unique() %>% na.omit()
+  NewABXUse_bin_mod <- glm(factor(sign) ~ 1, data = NewABXUse, family = binomial)
+  NewABXUse_bin_mod_sum <- summary(NewABXUse_bin_mod)  
+
+  ##### RESISTANCE-------------------------------
+  
+  ## ABR total
+ resTot <- dpsir_final %>% filter(DPSIR=="RESISTANCE" & SHORTNAME=="resTotal") %>% select(c("ISO3", "SHORTNAME","DPSIR","change","income","sign", "RESPONSE")) %>% unique() %>% na.omit()
+  resTot_bin_mod <- glm(factor(sign) ~ 1, data = resTot, family = binomial)
+  resTot_bin_mod_sum <- summary(resTot_bin_mod)  
+
+  ##  with levels of MRSA declining (mean = -0.16 SD, P=0.06, 21/32 countries, P=0.04)
+  MRSA <- dpsir_final %>% filter(DPSIR=="RESISTANCE" & SHORTNAME=="MRSA") %>% select(c("ISO3", "SHORTNAME","DPSIR","change","income","sign", "RESPONSE")) %>% unique() %>% na.omit() 
+  MRSA_bin_mod <- glm(factor(sign) ~ 1, data = MRSA, family = binomial) 
+  MRSA_bin_mod_sum <- summary(MRSA_bin_mod)  
+
+  ##while emerging types of resistance to last-resort carbapenems in Enterobacteriaceae increased
+  CR <- dpsir_final %>% filter(DPSIR=="RESISTANCE" & SHORTNAME=="CR") %>% select(c("ISO3", "SHORTNAME","DPSIR","change","income","sign", "RESPONSE")) %>% unique() %>% na.omit()
+  CR_bin_mod <- glm(factor(sign) ~ 1, data = CR, family = binomial)
+  CR_bin_mod_sum <- summary(CR_bin_mod)  
+
+  ##STR
+  STR <- dpsir_final %>% filter(DPSIR=="RESISTANCE" & SHORTNAME=="STR") %>% select(c("ISO3", "SHORTNAME","DPSIR","change","income","sign", "RESPONSE")) %>% unique() %>% na.omit()
+  STR_bin_mod <- glm(factor(sign) ~ 1, data = STR, family = binomial)
+  STR_bin_mod_sum <- summary(STR_bin_mod)  
+
+  ##DRI--------------------------
+DRI <- dpsir_final %>% filter(DPSIR=="DRI") %>% select(c("ISO3", "SHORTNAME","DPSIR","change","income","sign", "RESPONSE")) %>% unique() %>% na.omit()
+  DRI_bin_mod <- glm(factor(sign) ~ 1, data = DRI, family = binomial)
+  DRI_bin_mod_sum <- summary(DRI_bin_mod)  
+
+  #save models as a list
+glm_mod_list <- list(driverTot_bin_mod=driverTot_bin_mod, infTot_bin_mod = infTot_bin_mod, sanTot_bin_mod = sanTot_bin_mod, vacTot_bin_mod = vacTot_bin_mod,  workTot_bin_mod = workTot_bin_mod, 
+            HIV_bin_mod=HIV_bin_mod, TB_bin_mod=TB_bin_mod, drinking_water_bin_mod=drinking_water_bin_mod, water_source_bin_mod=water_source_bin_mod, overall_san_bin_mod=overall_san_bin_mod, 
+            DTP3_bin_mod = DTP3_bin_mod, HepB3_bin_mod = HepB3_bin_mod, Hib3_bin_mod = Hib3_bin_mod, Pol3_bin_mod = Pol3_bin_mod, Measles_bin_mod = Measles_bin_mod, RCV1_bin_mod = RCV1_bin_mod, Nursing_bin_mod = Nursing_bin_mod, Physicians_bin_mod = Physicians_bin_mod,
+            useTot_bin_mod=useTot_bin_mod, totDDD_bin_mod=totDDD_bin_mod, Broad_bin_mod=Broad_bin_mod, NewABXUse_bin_mod=NewABXUse_bin_mod, resTot_bin_mod=resTot_bin_mod, MRSA_bin_mod=MRSA_bin_mod, CR_bin_mod=CR_bin_mod, STR_bin_mod=STR_bin_mod,DRI_bin_mod=DRI_bin_mod)
+
+#save mod summaries as a list
+mod_data_list <- list(driverTot =driverTot, infTot  = infTot , sanTot  = sanTot , vacTot  = vacTot ,  workTot  = workTot ,  
+            HIV =HIV , TB =TB , drinking_water =drinking_water , water_source =water_source , overall_san =overall_san , 
+            DTP3  = DTP3 , HepB3  = HepB3 , Hib3  = Hib3 , Pol3  = Pol3 , Measles  = Measles , RCV1  = RCV1 , Nursing  = Nursing , Physicians  = Physicians ,
+            useTot =useTot , totDDD =totDDD , Broad =Broad , NewABXUse =NewABXUse , resTot =resTot , MRSA =MRSA , CR =CR ,STR =STR ,DRI =DRI )
+ glm_result <- list(glm_mod_list = glm_mod_list, mod_data_list = mod_data_list)
+return(glm_result)
+}
+
+sign_var_result<- sign_var(dpsir_final)
+glm_mod_data <- sign_var_result[[2]]
+glm_summary_l <- sign_var_result[[1]]
+glm_summary_list <- lapply(sign_var_result[[1]], broom.mixed::tidy)
+
+combined_df_bin <- as.data.frame(bind_rows(glm_summary_list, .id = "Model"))
+
+combined_df_bin$df <- NA  # Initialize df_new column with NA values
+# add df
+ for (i in 1:length(glm_summary_l)) {
+   combined_df_bin$df[i] <- glm_summary_l[[i]]$df.null
+ }
+
+#### Tidy the summary table df ----
+combined_df_bin$variable <- strsplit(combined_df_bin$Model, "_bin_mod")
+combined_df_bin <- combined_df_bin %>% select(-c("term", "Model")) %>%   
+  mutate(levels = case_when(
+           variable %in% c("driverTot", "useTot","resTot", "DRI") ~ "level 1",
+           variable %in% c("totDDD" , "Broad" , "NewABXUse" , "MRSA", "STR", "CR",  "workTot" ,"sanTot", "vacTot","infTot" ) ~ "level 2",
+           variable %in% c("HIV", "TB", "drinking_water", "water_source", "overall_san") ~ "level 3",
+           variable %in% c("DTP3","HepB3","Hib3","Pol3","Measles","RCV1", "Nursing", "Physicians") ~ "level 3")) %>%   
+  mutate(DPSIR = case_when(
+           variable %in% c("driverTot", "workTot" ,"sanTot", "vacTot","infTot") ~ "Drivers",
+           variable %in% c("useTot", "totDDD" , "Broad" , "NewABXUse" ) ~ "Use",
+           variable %in% c("resTot", "MRSA", "STR", "CR" ) ~ "Resistance",
+           variable %in% c("DRI" ) ~ "DRI",
+          ##level 3
+          variable %in% c("HIV", "TB") ~ "Drivers/inf",
+          variable %in% c( "drinking_water", "water_source", "overall_san") ~ "Drivers/san",
+          variable %in% c("DTP3","HepB3","Hib3","Pol3","Measles","RCV1" ) ~ "Drivers/vac",
+          variable %in% c("Nursing","Physicians"  ) ~ "Drivers/Work")) 
+#%>% 
+  # rename("t-value" = "statistic", 
+  #        "mean" ="estimate") %>% select("variable", "DPSIR","levels", "mean", "t-value","std.error", "p.value")
+
+combined_df_bin$DPSIR<- as.factor(combined_df_bin$DPSIR)
+#combined_df_bin$variable <- as.character(combined_df_bin$variable)
+combined_df_bin <- combined_df_bin %>% select(c("variable",  "levels","DPSIR","estimate", "std.error","statistic","df", "p.value"))
+# Replace the variable names
+combined_df$variable <- as.character(combined_df$variable)
+combined_df$variable <- plyr::mapvalues(combined_df$variable, from = names(var_name_changes), to = var_name_changes)
+combined_df$levels<- as.factor(combined_df$levels)
+# fix the p values
+# thanks to https://www.r-bloggers.com/2016/03/correctly-reporting-p-values-in-summary-tables-reported-with-xtable/
+fixp <- function(x, dig=3){
+  x <- as.data.frame(x)
+  x[,ncol(x)] <- round(x[,ncol(x)], dig)
+  for(i in 1:nrow(x)){
+    if(x[i,ncol(x)] == 0)
+      x[i,ncol(x)] <- paste0("< .", paste0(rep(0,dig-1), collapse=""), "1")
+  }
+  
+  x
+}
+combined_df_bin<- fixp(combined_df_bin)
+# Arrange the levels in a specific order
+level_order <- c("level 1", "level 2", "level 3")
+
+#back transform
+combined_df_bin$estimate <- as.numeric(combined_df_bin$estimate)
+combined_df_bin$std.error <- as.numeric(combined_df_bin$std.error)
+combined_df_bin$estimate <- boot::inv.logit(combined_df_bin$estimate)
+#combined_df_bin$std.error <- boot::inv.logit(combined_df_bin$std.error)
+combined_df_bin <- format(combined_df_bin, digits = 2)
+
+# add number of observations and number of positive observations
+#use lm_mod_data list
+for (i in 1:length(glm_mod_data)) {
+  # Extract npos and nobs
+  glm_mod_data[[i]]$new <-  glm_mod_data[[i]] %>% mutate(obs = nrow(glm_mod_data[[i]])) %>% 
+    group_by(sign) %>% 
+    reframe(n_pos = n(), obs = obs) %>% distinct() %>% 
+  filter(sign == "+") %>% ungroup() %>%  select(-sign)
+}
+
+
+for (i in 1:length(glm_mod_data)) {
+combined_df_bin$increasing[i] <- glm_mod_data[[i]]$new$n_pos
+combined_df_bin$sample_size[i] <- glm_mod_data[[i]]$new$obs
+}
+
+
+sign_of_change_tbl <- combined_df_bin %>%
+  mutate(p.value = str_replace(p.value, "<0.001", "\\( < 0.001 \\)")) %>% 
+  arrange(factor(levels, levels = level_order)) %>%
+  group_by(levels) %>%
+  gt() %>% 
+  cols_label(DPSIR = "DPSEA",
+             sample_size = "Sample Size",
+             increasing = "Number of Increasing Countries") 
+
+
+sign_of_change_tbl <- sign_of_change_tbl %>% tab_options(
+  table.font.size= px(11),
+      data_row.padding = px(3),
+      heading.align = 'left',
+#      column_labels.background.color = 'dodgerblue4',
+      heading.title.font.size = px(14),
+      heading.subtitle.font.size = px(12),
+      table_body.hlines.width = px(0)
+    ) |> 
+  tab_style(
+    style = list(cell_text(weight = "bold")),
+    locations = cells_body(columns = "p.value", rows = p.value < 0.05)
+  ) %>%
+  tab_header(
+    title = md("**Variation in Categorical Trend for DPSE Indicators**"),
+    subtitle = md("Binomial Model Statistics")
+  ) %>%
+  tab_footnote(
+    footnote = md("glm(Categorical Trend ~ 1, data, family=binomial)")) %>% 
+  tab_source_note(source_note = md("Estimates are back transformed")
+  )
+
+
+# Print the gt table
+sign_of_change_tbl
+
+gtsave(sign_of_change_tbl, file = "sign_of_change_in_text.html", path = here("results"))
+```
